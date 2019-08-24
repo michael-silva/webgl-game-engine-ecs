@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "gl-matrix": "^3.0.0"
+    "gl-matrix": "^3.1.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.5.5",

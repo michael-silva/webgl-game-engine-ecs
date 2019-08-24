@@ -1,5 +1,25 @@
+import { vec3, mat4 } from 'gl-matrix';
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
+
+export class TransformUtils {
+  static getXForm(transform) {
+    const { position = [0, 0], size = [1, 1], rotationInRadians = 0 } = transform;
+    const [x, y] = position;
+    const [width, height] = size;
+    const xform = mat4.create();
+    // Step E: compute the white square transform
+    mat4.translate(xform, xform, vec3.fromValues(x, y, 0.0));
+    mat4.rotateZ(xform, xform, rotationInRadians);
+    mat4.scale(xform, xform, vec3.fromValues(width, height, 1.0));
+
+    return xform;
+  }
+
+  static degreeToRadians(degree) {
+    return degree * (Math.PI / 180.0);
+  }
+}
 
 export class RenderUtils {
   static getGL(canvas) {
@@ -128,10 +148,14 @@ export class ShaderUtils {
     // Step G: Gets a reference to the uniform variable uPixelColor in the
     // fragment shader
     const pixelColor = gl.getUniformLocation(compiledShader, 'uPixelColor');
+    const modelTransform = gl.getUniformLocation(compiledShader, 'uModelTransform');
+    const viewProjection = gl.getUniformLocation(compiledShader, 'uViewProjTransform');
 
     return {
       pixelColor,
       compiledShader,
+      modelTransform,
+      viewProjection,
       shaderVertexPositionAttribute,
     };
   }
@@ -140,4 +164,6 @@ export class ShaderUtils {
 export const Color = {
   White: [1, 1, 1, 1],
   Red: [1, 0, 0, 1],
+  Blue: [0, 0, 1, 1],
+  Green: [0, 1, 0, 1],
 };
