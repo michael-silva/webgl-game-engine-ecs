@@ -2,7 +2,9 @@
 
 import { mat4, vec2 } from 'gl-matrix';
 import { RenderUtils, ShaderUtils } from './utils';
-import { RenderSystem } from './systems';
+import { GameLoopSystem } from './systems';
+import { RenderSystem } from './render-system';
+import { InputSystem } from './input-system';
 
 // @component
 export class GameRenderState {
@@ -20,6 +22,22 @@ export class GameWorld {
   entities = [];
 
   systems = [];
+
+  constructor({ active, paused } = {}) {
+    this.active = !!active;
+    this.paused = !!paused;
+  }
+}
+
+// @component
+export class LoopState {
+  isLoopRunning = false;
+
+  previousTime = 0.0;
+
+  lagTime = 0.0;
+
+  FPS = 60;
 }
 
 // @entity
@@ -28,11 +46,19 @@ export class GameElement {
 
   renderState = null;
 
-  currentWorld = 0;
+  loopState = new LoopState();
+
+  keyboard = null;
+
+  mouse = null;
 
   worlds = [];
 
   systems = [];
+
+  renderSystem = null;
+
+  inputSystem = null;
 }
 
 // @entity
@@ -40,15 +66,6 @@ export class GameObject {
   components = []
 }
 
-// @system
-export class GameLoop {
-  run(game) {
-    // TODO: smell
-    const world = game.worlds[game.currentWorld];
-    world.systems.forEach((s) => s.run(world, game));
-    game.systems.forEach((s) => s.run(world, game));
-  }
-}
 
 // @component
 export class CameraComponent {
@@ -81,10 +98,19 @@ export class GameEngine {
       simpleShader: ShaderUtils.createSimpleShader(state),
     };
     this._game.renderState = state;
-    const defaultWorld = new GameWorld();
+    const defaultWorld = new GameWorld({ active: true });
     this._game.worlds.push(defaultWorld);
-    this._loop = new GameLoop();
-    this.use(new RenderSystem(bgColor));
+    this._loop = new GameLoopSystem();
+    this.useInput(new InputSystem(canvas));
+    this.useRender(new RenderSystem(bgColor));
+  }
+
+  useInput(system) {
+    this._game.inputSystem = system;
+  }
+
+  useRender(system) {
+    this._game.renderSystem = system;
   }
 
   use(system) {
@@ -96,8 +122,8 @@ export class GameEngine {
   }
 
   addEntity(entity) {
-    // TODO: smell
-    this._game.worlds[this._game.currentWorld].entities.push(entity);
+    const world = this._game.worlds.find((w) => w.active);
+    world.entities.push(entity);
   }
 
   addScene(scene) {
