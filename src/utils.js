@@ -103,7 +103,7 @@ export class SimpleShader {
 }
 
 export class ShaderUtils {
-  static loadAndCompileShader(gl, shaderSource, shaderType) {
+  static compileShader(gl, shaderSource, shaderType) {
     // Step B: Create the shader based on the source type: vertex or fragment
     const compiledShader = gl.createShader(shaderType);
     // Step C: Compile the created shader
@@ -118,8 +118,8 @@ export class ShaderUtils {
 
   static createSimpleShader({ gl, glVertexBuffer }) {
     // Step A: load and compile the vertex and fragment shaders
-    const vertexShader = ShaderUtils.loadAndCompileShader(gl, simpleVertexShader, gl.VERTEX_SHADER);
-    const fragmentShader = ShaderUtils.loadAndCompileShader(
+    const vertexShader = ShaderUtils.compileShader(gl, simpleVertexShader, gl.VERTEX_SHADER);
+    const fragmentShader = ShaderUtils.compileShader(
       gl,
       simpleFragmentShader,
       gl.FRAGMENT_SHADER,

@@ -34,18 +34,14 @@ export class GameLoopSystem {
         loopState.isLoopRunning = false;
       }
       while (loopState.lagTime >= MPF && loopState.isLoopRunning) {
-        game.inputSystem.run(game);
+        game.preSystems.forEach((s) => s.run(game));
         loopState.lagTime -= MPF;
-        game.worlds.forEach((world) => {
+        const scene = game.scenes[game.currentScene];
+        scene.worlds.forEach((world) => {
           if (!world.active) return;
-          world.systems.forEach((s) => s.run(world, game));
+          scene.systems.forEach((s) => s.run(world, scene, game));
         });
-
-        game.worlds.forEach((world) => {
-          if (!world.active) return;
-          game.systems.forEach((s) => s.run(world, game));
-          game.renderSystem.run(world, game);
-        });
+        game.posSystems.forEach((s) => s.run(game));
       }
     }
   }

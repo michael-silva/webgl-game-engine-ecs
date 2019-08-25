@@ -16,7 +16,7 @@ export class GameRenderState {
 }
 
 // @component
-export class GameWorld {
+export class GameWorldEntity {
   resources = [];
 
   entities = [];
@@ -41,24 +41,36 @@ export class LoopState {
 }
 
 // @entity
-export class GameElement {
+export class GameSceneEntity {
   cameras = [];
 
-  renderState = null;
+  keyboard = null; // reference
 
-  loopState = new LoopState();
-
-  keyboard = null;
-
-  mouse = null;
+  mouse = null; // reference
 
   worlds = [];
 
   systems = [];
+}
 
-  renderSystem = null;
 
-  inputSystem = null;
+// @entity
+export class GameEntity {
+  renderState = null;
+
+  loopState = new LoopState();
+
+  keyboard = null; // reference
+
+  mouse = null; // reference
+
+  preSystems = [];
+
+  posSystems = [];
+
+  scenes = [];
+
+  currentScene = 0;
 }
 
 // @entity
@@ -87,10 +99,45 @@ export class CameraComponent {
   }
 }
 
+class GameWorld {
+  constructor(world) {
+    this._world = world;
+  }
+
+  addEntity(entity) {
+    this._world.entities.push(entity);
+  }
+}
+
+class GameScene {
+  constructor(scene) {
+    this._scene = scene;
+  }
+
+  use(system) {
+    this._scene.systems.push(system);
+  }
+
+  addCamera(camera) {
+    this._scene.cameras.push(camera);
+  }
+
+  addEntity(entity, world) {
+    const theWorld = world || this._scene.worlds[0];
+    theWorld.entities.push(entity);
+  }
+
+  createWorld() {
+    const world = new GameWorldEntity({ active: this._scene.worlds.length === 0 });
+    this._scene.worlds.push(world);
+    return new GameWorld(world);
+  }
+}
+
 // @orchestrator
 export class GameEngine {
   constructor(canvas, { bgColor }) {
-    this._game = new GameElement();
+    this._game = new GameEntity();
     const gl = RenderUtils.getGL(canvas);
     const vertexBuffer = RenderUtils.initSquareBuffer(gl);
     const state = new GameRenderState(gl, vertexBuffer);
@@ -98,36 +145,25 @@ export class GameEngine {
       simpleShader: ShaderUtils.createSimpleShader(state),
     };
     this._game.renderState = state;
-    const defaultWorld = new GameWorld({ active: true });
-    this._game.worlds.push(defaultWorld);
     this._loop = new GameLoopSystem();
-    this.useInput(new InputSystem(canvas));
-    this.useRender(new RenderSystem(bgColor));
+    this.useBefore(new InputSystem(canvas));
+    this.useAfter(new RenderSystem(bgColor));
   }
 
-  useInput(system) {
-    this._game.inputSystem = system;
+  createScene() {
+    const sceneEntity = new GameSceneEntity();
+    this._game.scenes.push(sceneEntity);
+    const scene = new GameScene(sceneEntity);
+    scene.createWorld();
+    return scene;
   }
 
-  useRender(system) {
-    this._game.renderSystem = system;
+  useBefore(system) {
+    this._game.preSystems.push(system);
   }
 
-  use(system) {
-    this._game.systems.push(system);
-  }
-
-  addCamera(camera) {
-    this._game.cameras.push(camera);
-  }
-
-  addEntity(entity) {
-    const world = this._game.worlds.find((w) => w.active);
-    world.entities.push(entity);
-  }
-
-  addScene(scene) {
-    this._game.worlds.push(scene);
+  useAfter(system) {
+    this._game.posSystems.push(system);
   }
 
   start() {

@@ -5,6 +5,7 @@ import { Color, TransformUtils } from '../src/utils';
 import { TransformComponent } from '../src/systems';
 import { RenderComponent } from '../src/render-system';
 import { KeyboardKeys } from '../src/input-system';
+import { SceneParser } from '../src/scene-parser';
 
 export class Rectangle extends GameObject {
   constructor({ color, transform }) {
@@ -150,10 +151,43 @@ class PulseSystem {
   }
 }
 
-function main() {
-  const canvas = document.querySelector('#canvas');
+class KeyboardChangeDemoSystem {
+  run(game) {
+    const { keyboard } = game;
+    if (keyboard.pressedKeys[KeyboardKeys.One]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 0;
+    }
+    if (keyboard.pressedKeys[KeyboardKeys.Two]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 1;
+    }
+  }
+}
 
-  const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
+class MovementChangeLevelSystem {
+  run({ entities }, { cameras, worlds }) {
+    const [camera] = cameras;
+    const MAX_X = camera.center[0] + camera.width / 2;
+    const MIN_X = camera.center[0] - camera.width / 2;
+    let worldActiveIndex = worlds.findIndex((w) => w.active);
+    entities.forEach((e) => {
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const movement = e.components.find((c) => c instanceof MovementComponent);
+      if (!transform || !movement) return;
+      const [x] = transform.position;
+      if (x > MAX_X || x < MIN_X) {
+        // eslint-disable-next-line
+        worlds[worldActiveIndex].active = false;
+        if (++worldActiveIndex === worlds.length) worldActiveIndex = 0;
+        // eslint-disable-next-line
+        worlds[worldActiveIndex].active = true;
+      }
+    });
+  }
+}
+
+function parseDemo1(game) {
   const camera = new CameraComponent({
     center: [20, 60],
     width: 20,
@@ -207,24 +241,45 @@ function main() {
     transform: new TransformComponent({ position: [10, 55], size: [1, 1] }),
   });
   game.addEntity(bottomLeft);
+}
 
-  game.use(new KeyboardMovementSystem());
-  game.use(new KeyboardRotationSystem());
-  game.use(new MovementSystem());
-  game.use(new MovementPortalSystem());
-  game.use(new RotationSystem());
-  game.use(new PulseSystem());
-  game.start();
+function main() {
+  const canvas = document.querySelector('#canvas');
 
-  /*
-  const game = new GameEngine(canvas);
-  const rect = new Rectangle(Color.Red);
-  const scene = new GameScene()
-  scene.addEntity(rect);
-  game.addScene(scene);
-  game.use(new CustomSystem());
-  game.start();
-  */
+  const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
+  game.useBefore(new KeyboardChangeDemoSystem());
+  Promise.all([
+    fetch('assets/scenes/demo1/level1.json').then((res) => res.json()),
+    fetch('assets/scenes/demo1/level2.json').then((res) => res.json()),
+  ])
+    .then(([level1, level2]) => {
+      const scene1 = game.createScene();
+      parseDemo1(scene1);
+      scene1.use(new KeyboardMovementSystem());
+      scene1.use(new KeyboardRotationSystem());
+      scene1.use(new MovementSystem());
+      scene1.use(new MovementPortalSystem());
+      scene1.use(new RotationSystem());
+      scene1.use(new PulseSystem());
+
+      const scene2 = game.createScene();
+      const parser = new SceneParser();
+      parser.map('transform', TransformComponent);
+      parser.map('movement', MovementComponent);
+      parser.map('movementKeys', MovementKeysComponent);
+      parser.map('render', RenderComponent);
+      parser.parse(scene2, level1);
+      scene1.use(new KeyboardMovementSystem());
+      scene1.use(new MovementSystem());
+      scene1.use(new MovementChangeLevelSystem());
+      const nextWorld = scene2.createWorld();
+      parser.parse(scene2, level2, nextWorld);
+      scene2.use(new KeyboardMovementSystem());
+      scene2.use(new MovementSystem());
+      scene2.use(new MovementChangeLevelSystem());
+
+      game.start();
+    });
 }
 
 window.addEventListener('load', main);

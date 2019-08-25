@@ -16,27 +16,31 @@ export class RenderSystem {
     this._bgColor = bgColor;
   }
 
-  run({ entities }, { renderState, cameras }) {
-    const { gl, glVertexBuffer, shaders } = renderState;
+  run(game) {
+    const { gl, glVertexBuffer, shaders } = game.renderState;
+    const scene = game.scenes[game.currentScene];
     RenderUtils.clearCanvas(gl, this._bgColor);
-    cameras.forEach((camera) => {
+    scene.cameras.forEach((camera) => {
       this.setupViewProjection(gl, camera);
     });
 
-    entities.forEach((e) => {
-      const renderable = e.components.find((c) => c instanceof RenderComponent);
-      const transform = e.components.find((c) => c instanceof TransformComponent);
-      if (!renderable || !transform) return;
-      if (!shaders.simpleShader || !shaders.simpleShader.modelTransform) return;
-      const { color } = renderable;
-      const { simpleShader } = shaders;
+    scene.worlds.forEach((world) => {
+      if (!world.active) return;
+      world.entities.forEach((e) => {
+        const renderable = e.components.find((c) => c instanceof RenderComponent);
+        const transform = e.components.find((c) => c instanceof TransformComponent);
+        if (!renderable || !transform) return;
+        if (!shaders.simpleShader || !shaders.simpleShader.modelTransform) return;
+        const { color } = renderable;
+        const { simpleShader } = shaders;
 
-      cameras.forEach((camera) => {
-        this.activateShader(gl, glVertexBuffer, simpleShader, color, camera);
+        scene.cameras.forEach((camera) => {
+          this.activateShader(gl, glVertexBuffer, simpleShader, color, camera);
+        });
+        const xform = TransformUtils.getXForm(transform);
+        gl.uniformMatrix4fv(simpleShader.modelTransform, false, xform);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       });
-      const xform = TransformUtils.getXForm(transform);
-      gl.uniformMatrix4fv(simpleShader.modelTransform, false, xform);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     });
   }
 
