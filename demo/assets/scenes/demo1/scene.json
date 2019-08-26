@@ -1,7 +1,5 @@
 {
   "resources": [
-    "assets/sounds/FirstLevel_cue.wav",
-    "assets/sounds/BlueLevel_cue.wav",
     "assets/sounds/BGClip.mp3"
   ],
   "sound": {
@@ -15,6 +13,9 @@
     "bgColor": [0.9, 0.9, 0.9, 1.0]
   },
   "worlds": [{
+    "resources": [
+      "assets/sounds/FirstLevel_cue.wav"
+    ],
     "objects": [
       { 
         "transform": {
@@ -49,6 +50,9 @@
     ]
   }, 
   {
+    "resources": [
+      "assets/sounds/BlueLevel_cue.wav"
+    ],
     "objects": [
       { 
         "transform": {

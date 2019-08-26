@@ -1,3 +1,5 @@
+import { ResourceLoader } from './utils';
+
 // @component
 export class TransformComponent {
   constructor({ position, size, rotationInRadians } = {}) {
@@ -43,6 +45,39 @@ export class GameLoopSystem {
         });
         game.posSystems.forEach((s) => s.run(game));
       }
+    }
+  }
+}
+
+// @system
+export class LoaderSystem {
+  _lastScene = -1;
+
+  _currentScene = -1;
+
+  constructor({ loadingScene } = {}) {
+    this.loadingScene = loadingScene || 0;
+  }
+
+  run(game) {
+    const { scenes, currentScene } = game;
+    const scene = scenes[currentScene];
+    if (this._lastScene !== currentScene) {
+      this._currentScene = currentScene;
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = this.loadingScene;
+      ResourceLoader.loadSceneResources(game, scene);
+      if (this._lastScene >= 0) ResourceLoader.unloadResources(game, scenes[this._lastScene]);
+      this._lastScene = currentScene;
+    }
+    else if (ResourceLoader.hasUnloadedResources(game, scene)) {
+      ResourceLoader.loadWorldsResources(game, scene);
+      ResourceLoader.unloadWorldsResources(game, scene);
+    }
+    else if (this._currentScene >= 0) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = this._currentScene;
+      this._currentScene = -1;
     }
   }
 }

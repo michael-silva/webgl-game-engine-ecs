@@ -17,7 +17,8 @@ export class SceneParser {
     }
     let currentWorld = null;
     worlds.forEach((world, i) => {
-      if (i > 0) currentWorld = scene.createWorld();
+      currentWorld = (i === 0) ? scene.getWorld() : scene.createWorld();
+      currentWorld.setResources(world.resources);
       world.objects.forEach((object) => {
         const entity = this.parseObject(object);
         if (currentWorld) currentWorld.addEntity(entity);

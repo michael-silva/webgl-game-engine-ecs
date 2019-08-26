@@ -174,28 +174,83 @@ class ResourceEntry {
 }
 
 export class ResourceLoader {
-  static loadResources(game, scene) {
+  static getActiveResources(scene) {
+    const words = scene.worlds.filter((w) => w.active && w.resources);
+    return [...scene.resources, ...words.flatMap((w) => w.resources)];
+  }
+
+  static updateResource(game, key) {
     const { resourceMap } = game;
-    scene.resources.forEach((key) => {
-      if (!resourceMap[key]) resourceMap[key] = new ResourceEntry({ key });
+    if (!resourceMap[key]) {
+      resourceMap[key] = new ResourceEntry({ key, ref: 1 });
       fetch(key)
         .then((res) => (key.endsWith('.json') ? res.json() : res.arrayBuffer()))
         .then((data) => {
           resourceMap[key].asset = data;
-          resourceMap[key].ref = 1;
           resourceMap[key].loaded = true;
         });
+    }
+    else {
+      resourceMap[key].ref++;
+    }
+  }
+
+  static loadSceneResources(game, scene) {
+    scene.resources.forEach((key) => {
+      ResourceLoader.updateResource(game, key);
+    });
+  }
+
+  static loadWorldsResources(game, scene) {
+    const worlds = scene.worlds.filter((w) => w.active && w.resources);
+    worlds.forEach((w) => {
+      w.resources.forEach((key) => ResourceLoader.updateResource(game, key));
+      if (!w._cache) w._cache = {};
+      w._cache.active = true;
+    });
+  }
+
+  static hasUnloadedResources(game, scene) {
+    const { resourceMap } = game;
+    const resources = ResourceLoader.getActiveResources(scene);
+    return resources.length > 0
+      && resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded);
+  }
+
+  static unloadWorldsResources(game, scene) {
+    const { resourceMap } = game;
+    const worlds = scene.worlds.filter((w) => w._cache && w._cache.active && !w.active);
+    const resources = [
+      ...scene.resources,
+      ...worlds.flatMap((world) => world.resources || []),
+    ];
+
+    worlds.forEach((w) => {
+      w._cache.active = false;
+    });
+    resources.forEach((key) => {
+      if (!resourceMap[key]) return;
+      resourceMap[key].ref--;
+      if (resourceMap[key].ref === 0) {
+        delete resourceMap[key];
+      }
     });
   }
 
   static unloadResources(game, scene) {
     const { resourceMap } = game;
-    scene.resources.forEach((key) => {
+    const resources = [
+      ...scene.resources,
+      ...scene.worlds.flatMap((world) => world.resources || []),
+    ];
+    scene.worlds.forEach((w) => {
+      if (w._cache) w._cache.active = false;
+    });
+    resources.forEach((key) => {
       if (!resourceMap[key]) return;
       resourceMap[key].ref--;
       if (resourceMap[key].ref === 0) {
-        resourceMap[key].asset = null;
-        resourceMap[key].loaded = false;
+        delete resourceMap[key];
       }
     });
   }

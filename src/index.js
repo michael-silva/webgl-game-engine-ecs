@@ -1,8 +1,8 @@
 /* eslint-disable max-classes-per-file */
 
 import { mat4, vec2 } from 'gl-matrix';
-import { RenderUtils, ShaderUtils, ResourceLoader } from './utils';
-import { GameLoopSystem } from './systems';
+import { RenderUtils, ShaderUtils } from './utils';
+import { GameLoopSystem, LoaderSystem } from './systems';
 import { RenderSystem } from './render-system';
 import { InputSystem } from './input-system';
 
@@ -114,6 +114,10 @@ class GameWorld {
   addEntity(entity) {
     this._world.entities.push(entity);
   }
+
+  setResources(resources) {
+    this._world.resources = resources || [];
+  }
 }
 
 class GameScene {
@@ -142,35 +146,14 @@ class GameScene {
     theWorld.entities.push(entity);
   }
 
+  getWorld() {
+    return new GameWorld(this._scene.worlds[0]);
+  }
+
   createWorld() {
     const world = new GameWorldEntity({ active: this._scene.worlds.length === 0 });
     this._scene.worlds.push(world);
     return new GameWorld(world);
-  }
-}
-
-export class LoaderSystem {
-  _currentScene = -1;
-
-  constructor({ loadingScene } = {}) {
-    this.loadingScene = loadingScene || 0;
-  }
-
-  run(game) {
-    const { scenes, currentScene, resourceMap } = game;
-    const scene = scenes[currentScene];
-    if (scene.resources.length > 0
-      && scene.resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded)) {
-      this._currentScene = currentScene;
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = this.loadingScene;
-      ResourceLoader.loadResources(game, scene);
-    }
-    else if (this._currentScene >= 0) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = this._currentScene;
-      this._currentScene = -1;
-    }
   }
 }
 
