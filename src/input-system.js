@@ -120,7 +120,6 @@ export class InputSystem {
 
   run(game) {
     const { pressedKeys, clickedKeys, previousStateKeys } = this._keyboardState;
-    const scene = game.scenes[game.currentScene];
     pressedKeys.forEach((pressed, key) => {
       clickedKeys[key] = pressed && !previousStateKeys[key];
       previousStateKeys[key] = pressed;
@@ -133,9 +132,9 @@ export class InputSystem {
     }
 
     // eslint-disable-next-line
-    game.keyboard = scene.keyboard = this._keyboardState;
+    game.keyboard = this._keyboardState;
     // eslint-disable-next-line
-    game.mouse = scene.mouse = this._mouseState;
+    game.mouse = this._mouseState;
   }
 
   _handleKeydown(e) {

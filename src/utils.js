@@ -161,6 +161,46 @@ export class ShaderUtils {
   }
 }
 
+class ResourceEntry {
+  ref = 0;
+
+  asset = null;
+
+  loaded = false;
+
+  constructor({ key }) {
+    this.key = key;
+  }
+}
+
+export class ResourceLoader {
+  static loadResources(game, scene) {
+    const { resourceMap } = game;
+    scene.resources.forEach((key) => {
+      if (!resourceMap[key]) resourceMap[key] = new ResourceEntry({ key });
+      fetch(key)
+        .then((res) => (key.endsWith('.json') ? res.json() : res.arrayBuffer()))
+        .then((data) => {
+          resourceMap[key].asset = data;
+          resourceMap[key].ref = 1;
+          resourceMap[key].loaded = true;
+        });
+    });
+  }
+
+  static unloadResources(game, scene) {
+    const { resourceMap } = game;
+    scene.resources.forEach((key) => {
+      if (!resourceMap[key]) return;
+      resourceMap[key].ref--;
+      if (resourceMap[key].ref === 0) {
+        resourceMap[key].asset = null;
+        resourceMap[key].loaded = false;
+      }
+    });
+  }
+}
+
 export const Color = {
   White: [1, 1, 1, 1],
   Red: [1, 0, 0, 1],

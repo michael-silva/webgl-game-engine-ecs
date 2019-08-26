@@ -1,0 +1,85 @@
+{
+  "resources": [
+    "assets/sounds/FirstLevel_cue.wav",
+    "assets/sounds/BlueLevel_cue.wav",
+    "assets/sounds/BGClip.mp3"
+  ],
+  "sound": {
+    "src": "assets/sounds/BGClip.mp3",
+    "play": true
+  },
+  "camera": {
+    "center": [20, 60],
+    "width": 20,
+    "viewport": [20, 40, 600, 300],
+    "bgColor": [0.9, 0.9, 0.9, 1.0]
+  },
+  "worlds": [{
+    "objects": [
+      { 
+        "transform": {
+          "position": [20, 60],
+          "size": [5, 5],
+          "rotationInRadians": 0.2
+        },
+        "render": {
+          "color": [1, 0, 0, 1]
+        }
+      },
+      { 
+        "transform": {
+          "position": [20, 60],
+          "size": [2, 2]
+        },
+        "audio": {
+          "src": "assets/sounds/FirstLevel_cue.wav"
+        },
+        "render": {
+          "color": [0, 0, 1, 1]
+        },
+        "movement": {
+          "speed": 0.05,
+          "direction": [1, 0]
+        },
+        "movementKeys": {
+          "right": 39,
+          "left": 37
+        }
+      }
+    ]
+  }, 
+  {
+    "objects": [
+      { 
+        "transform": {
+          "position": [20, 60],
+          "size": [5, 5],
+          "rotationInRadians": 0.2
+        },
+        "render": {
+          "color": [1, 1, 1, 1]
+        }
+      },
+      { 
+        "transform": {
+          "position": [20, 60],
+          "size": [2, 2]
+        },
+        "audio": {
+          "src": "assets/sounds/BlueLevel_cue.wav"
+        },
+        "render": {
+          "color": [1, 0, 0, 1]
+        },
+        "movement": {
+          "speed": 0.05,
+          "direction": [1, 0]
+        },
+        "movementKeys": {
+          "right": 39,
+          "left": 37
+        }
+      }
+    ]
+  }]
+}

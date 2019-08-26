@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 
 import { mat4, vec2 } from 'gl-matrix';
-import { RenderUtils, ShaderUtils } from './utils';
+import { RenderUtils, ShaderUtils, ResourceLoader } from './utils';
 import { GameLoopSystem } from './systems';
 import { RenderSystem } from './render-system';
 import { InputSystem } from './input-system';
@@ -40,8 +40,13 @@ export class LoopState {
   FPS = 60;
 }
 
+
 // @entity
 export class GameSceneEntity {
+  sound = null;
+
+  resources = [];
+
   cameras = [];
 
   keyboard = null; // reference
@@ -56,6 +61,8 @@ export class GameSceneEntity {
 
 // @entity
 export class GameEntity {
+  resourceMap = {};
+
   renderState = null;
 
   loopState = new LoopState();
@@ -118,6 +125,14 @@ class GameScene {
     this._scene.systems.push(system);
   }
 
+  setResources(resources) {
+    this._scene.resources = resources || [];
+  }
+
+  setSound(sound) {
+    this._scene.sound = sound;
+  }
+
   addCamera(camera) {
     this._scene.cameras.push(camera);
   }
@@ -134,6 +149,31 @@ class GameScene {
   }
 }
 
+export class LoaderSystem {
+  _currentScene = -1;
+
+  constructor({ loadingScene } = {}) {
+    this.loadingScene = loadingScene || 0;
+  }
+
+  run(game) {
+    const { scenes, currentScene, resourceMap } = game;
+    const scene = scenes[currentScene];
+    if (scene.resources.length > 0
+      && scene.resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded)) {
+      this._currentScene = currentScene;
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = this.loadingScene;
+      ResourceLoader.loadResources(game, scene);
+    }
+    else if (this._currentScene >= 0) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = this._currentScene;
+      this._currentScene = -1;
+    }
+  }
+}
+
 // @orchestrator
 export class GameEngine {
   constructor(canvas, { bgColor }) {
@@ -146,6 +186,7 @@ export class GameEngine {
     };
     this._game.renderState = state;
     this._loop = new GameLoopSystem();
+    this.useBefore(new LoaderSystem());
     this.useBefore(new InputSystem(canvas));
     this.useAfter(new RenderSystem(bgColor));
   }

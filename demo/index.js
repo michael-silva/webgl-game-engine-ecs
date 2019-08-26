@@ -6,6 +6,7 @@ import { TransformComponent } from '../src/systems';
 import { RenderComponent } from '../src/render-system';
 import { KeyboardKeys } from '../src/input-system';
 import { SceneParser } from '../src/scene-parser';
+import { AudioComponent, AudioSystem, SoundSystem } from '../src/audio-system';
 
 export class Rectangle extends GameObject {
   constructor({ color, transform }) {
@@ -78,7 +79,7 @@ class RotationSystem {
 }
 
 class KeyboardRotationSystem {
-  run({ entities }, { keyboard }) {
+  run({ entities }, scene, { keyboard }) {
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
       const rotation = e.components.find((c) => c instanceof RotationComponent);
@@ -107,7 +108,7 @@ class MovementSystem {
 }
 
 class KeyboardMovementSystem {
-  run({ entities }, { keyboard }) {
+  run({ entities }, scene, { keyboard }) {
     entities.forEach((e) => {
       const movement = e.components.find((c) => c instanceof MovementComponent);
       const movementKeys = e.components.find((c) => c instanceof MovementKeysComponent);
@@ -187,6 +188,20 @@ class MovementChangeLevelSystem {
   }
 }
 
+class MovementAudioSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const movement = e.components.find((c) => c instanceof MovementComponent);
+      const audio = e.components.find((c) => c instanceof AudioComponent);
+      if (!movement || !audio) return;
+      if (movement.direction[0] !== 0) {
+        audio.play = true;
+      }
+    });
+  }
+}
+
+
 function parseDemo1(game) {
   const camera = new CameraComponent({
     center: [20, 60],
@@ -248,11 +263,9 @@ function main() {
 
   const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
   game.useBefore(new KeyboardChangeDemoSystem());
-  Promise.all([
-    fetch('assets/scenes/demo1/level1.json').then((res) => res.json()),
-    fetch('assets/scenes/demo1/level2.json').then((res) => res.json()),
-  ])
-    .then(([level1, level2]) => {
+  fetch('assets/scenes/demo1/scene.json')
+    .then((res) => res.json())
+    .then((data) => {
       const scene1 = game.createScene();
       parseDemo1(scene1);
       scene1.use(new KeyboardMovementSystem());
@@ -261,23 +274,24 @@ function main() {
       scene1.use(new MovementPortalSystem());
       scene1.use(new RotationSystem());
       scene1.use(new PulseSystem());
+      scene1.use(new AudioSystem());
 
-      const scene2 = game.createScene();
       const parser = new SceneParser();
       parser.map('transform', TransformComponent);
       parser.map('movement', MovementComponent);
       parser.map('movementKeys', MovementKeysComponent);
       parser.map('render', RenderComponent);
-      parser.parse(scene2, level1);
-      scene1.use(new KeyboardMovementSystem());
-      scene1.use(new MovementSystem());
-      scene1.use(new MovementChangeLevelSystem());
-      const nextWorld = scene2.createWorld();
-      parser.parse(scene2, level2, nextWorld);
+      parser.map('audio', AudioComponent);
+
+      const scene2 = game.createScene();
+      parser.parse(scene2, data);
       scene2.use(new KeyboardMovementSystem());
       scene2.use(new MovementSystem());
       scene2.use(new MovementChangeLevelSystem());
+      scene2.use(new MovementAudioSystem());
+      scene2.use(new AudioSystem());
 
+      game.useAfter(new SoundSystem());
       game.start();
     });
 }
