@@ -3,14 +3,14 @@
 import { mat4, vec2 } from 'gl-matrix';
 import { RenderUtils, ShaderUtils } from './utils';
 import { GameLoopSystem, LoaderSystem } from './systems';
-import { RenderSystem } from './render-system';
+import { RenderSystem, PreRenderSystem } from './render-system';
 import { InputSystem } from './input-system';
 
 // @component
 export class GameRenderState {
-  constructor(gl, glVertexBuffer) {
+  constructor(gl, buffers) {
     this.gl = gl;
-    this.glVertexBuffer = glVertexBuffer;
+    this.buffers = buffers;
     this.shaders = {};
   }
 }
@@ -22,6 +22,8 @@ export class GameWorldEntity {
   entities = [];
 
   systems = [];
+
+  components = [];
 
   constructor({ active, paused } = {}) {
     this.active = !!active;
@@ -61,6 +63,8 @@ export class GameSceneEntity {
 
 // @entity
 export class GameEntity {
+  loaders = [];
+
   resourceMap = {};
 
   renderState = null;
@@ -166,12 +170,14 @@ export class GameEngine {
     const state = new GameRenderState(gl, vertexBuffer);
     state.shaders = {
       simpleShader: ShaderUtils.createSimpleShader(state),
+      textureShader: ShaderUtils.createTextureShader(state),
     };
     this._game.renderState = state;
     this._loop = new GameLoopSystem();
     this.useBefore(new LoaderSystem());
     this.useBefore(new InputSystem(canvas));
-    this.useAfter(new RenderSystem(bgColor));
+    this.useAfter(new PreRenderSystem(bgColor));
+    this.useAfter(new RenderSystem());
   }
 
   createScene() {
@@ -190,7 +196,15 @@ export class GameEngine {
     this._game.posSystems.push(system);
   }
 
-  start() {
+  mapLoader(map) {
+    if (!(map.pattern instanceof RegExp) || !map.loader || typeof (map.loader.loadFile) !== 'function') {
+      throw new Error('The loader must have and pattern regex property and a lofFile function');
+    }
+    this._game.loaders.push(map);
+  }
+
+  start({ scene = 0 } = {}) {
+    this._game.currentScene = scene;
     this._loop.run(this._game);
   }
 }

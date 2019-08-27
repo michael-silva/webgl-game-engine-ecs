@@ -1,6 +1,8 @@
 import { vec3, mat4 } from 'gl-matrix';
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
+import textureVertexShader from './GLSLShaders/TextureVS.glsl';
+import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
 
 export class TransformUtils {
   static getXForm(transform) {
@@ -21,10 +23,25 @@ export class TransformUtils {
   }
 }
 
+export class TextureInfo {
+  constructor(name, width, height, id) {
+    this.name = name;
+    this.width = width;
+    this.height = height;
+    this.texID = id;
+    this.colorArray = null;
+  }
+}
+
 export class RenderUtils {
   static getGL(canvas) {
     const gl = canvas.getContext('webgl', { alpha: false });
     if (!gl) throw new Error("Your browser don't suport a WEBGL");
+    // Allows transperency with textures.
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    // Set images to flip the y axis to match the texture coordinate space.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     return gl;
   }
 
@@ -41,11 +58,18 @@ export class RenderUtils {
       -0.5, -0.5, 0.0,
     ];
 
+    const textureCoordinates = [
+      1.0, 1.0,
+      0.0, 1.0,
+      1.0, 0.0,
+      0.0, 0.0,
+    ];
+
     // Step A: Allocate and store vertex positions into the webGL context
     // Create a buffer on the gl context for our vertex positions
-    const squareVertexBuffer = gl.createBuffer();
+    const vertexBuffer = gl.createBuffer();
     // Step B: Activate vertexBuffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     // Step C: Loads verticesOfSquare into the vertexBuffer
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -53,10 +77,70 @@ export class RenderUtils {
       gl.STATIC_DRAW,
     );
 
-    return squareVertexBuffer;
+    // Step B: Allocate and store texture coordinates
+    // Create a buffer on the gGL context for our vertex positions
+    const textureBuffer = gl.createBuffer();
+    // Activate vertexBuffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+    // Loads verticesOfSquare into the vertexBuffer
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(textureCoordinates),
+      gl.STATIC_DRAW,
+    );
+
+    return {
+      vertexBuffer,
+      textureBuffer,
+    };
   }
 
-  /* static processImage(gl, textureName, image) {
+  static setupViewProjection(gl, camera) {
+    // Step A: Set up and clear the Viewport
+    // Step A1: Set up the viewport: area on canvas to be drawn
+    gl.viewport(...camera.viewport);
+    // y position of bottom-left corner
+    // width of the area to be drawn
+    // height of the area to be drawn
+    // Step A2: set up the corresponding scissor area to limit clear area
+    gl.scissor(...camera.viewport);
+    // y position of bottom-left corner
+    // width of the area to be drawn
+    // height of the area to be drawn
+    // Step A3: set the color to be clear to black
+    gl.clearColor(...camera.bgColor); // set the color to be cleared
+
+    // Step A4: enable and clear the scissor area
+    gl.enable(gl.SCISSOR_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.disable(gl.SCISSOR_TEST);
+
+    // Step B: Set up the View-Projection transform operator
+    // Step B1: define the view matrix
+    mat4.lookAt(camera.viewMatrix,
+      [camera.center[0], camera.center[1], 10], // WC center
+      [camera.center[0], camera.center[1], 0], //
+      [0, 1, 0]); // orientation
+    // Step B2: define the projection matrix
+    const halfWCWidth = 0.5 * camera.width;
+    const halfWCHeight = halfWCWidth * (camera.viewport[3] / camera.viewport[2]);
+    // WCHeight = WCWidth * viewportHeight / viewportWidth
+    mat4.ortho(camera.projMatrix,
+      -halfWCWidth,
+      halfWCWidth,
+      // distant to left of WC
+      // distant to right of WC
+      // distant to bottom of WC
+      // distant to top of WC
+      -halfWCHeight,
+      halfWCHeight,
+      camera.nearPlane, // z-distant to near plane
+      camera.farPlane); // z-distant to far plane
+    // Step B3: concatnate view and project matrices
+    mat4.multiply(camera.viewProjection, camera.projMatrix, camera.viewMatrix);
+  }
+
+  static processImage(gl, textureName, image) {
     if (image instanceof TextureInfo) return image;
     const textureID = gl.createTexture();
 
@@ -90,7 +174,7 @@ export class RenderUtils {
       textureID,
     );
     return texInfo;
-  } */
+  }
 }
 
 // @component
@@ -116,12 +200,14 @@ export class ShaderUtils {
     return compiledShader;
   }
 
-  static createSimpleShader({ gl, glVertexBuffer }) {
+  static createShader({
+    gl, buffer, vertexShaderSource, fragmentShaderSource,
+  }) {
     // Step A: load and compile the vertex and fragment shaders
-    const vertexShader = ShaderUtils.compileShader(gl, simpleVertexShader, gl.VERTEX_SHADER);
+    const vertexShader = ShaderUtils.compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
     const fragmentShader = ShaderUtils.compileShader(
       gl,
-      simpleFragmentShader,
+      fragmentShaderSource,
       gl.FRAGMENT_SHADER,
     );
     // Step B: Create and link the shaders into a program.
@@ -136,7 +222,7 @@ export class ShaderUtils {
     // Step D: Gets a reference to the aSquareVertexPosition attribute
     const shaderVertexPositionAttribute = gl.getAttribLocation(compiledShader, 'aSquareVertexPosition');
     // Step E: Activates the vertex buffer loaded in VertexBuffer.js
-    gl.bindBuffer(gl.ARRAY_BUFFER, glVertexBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     // Step F: Describe the characteristic of the vertex position attribute
     gl.vertexAttribPointer(shaderVertexPositionAttribute,
       3, // each vertex element is a 3-float (x,y,z)
@@ -159,100 +245,31 @@ export class ShaderUtils {
       shaderVertexPositionAttribute,
     };
   }
-}
 
-class ResourceEntry {
-  ref = 0;
-
-  asset = null;
-
-  loaded = false;
-
-  constructor({ key }) {
-    this.key = key;
-  }
-}
-
-export class ResourceLoader {
-  static getActiveResources(scene) {
-    const words = scene.worlds.filter((w) => w.active && w.resources);
-    return [...scene.resources, ...words.flatMap((w) => w.resources)];
-  }
-
-  static updateResource(game, key) {
-    const { resourceMap } = game;
-    if (!resourceMap[key]) {
-      resourceMap[key] = new ResourceEntry({ key, ref: 1 });
-      fetch(key)
-        .then((res) => (key.endsWith('.json') ? res.json() : res.arrayBuffer()))
-        .then((data) => {
-          resourceMap[key].asset = data;
-          resourceMap[key].loaded = true;
-        });
-    }
-    else {
-      resourceMap[key].ref++;
-    }
-  }
-
-  static loadSceneResources(game, scene) {
-    scene.resources.forEach((key) => {
-      ResourceLoader.updateResource(game, key);
+  static createSimpleShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: simpleVertexShader,
+      fragmentShaderSource: simpleFragmentShader,
     });
+
+    return shader;
   }
 
-  static loadWorldsResources(game, scene) {
-    const worlds = scene.worlds.filter((w) => w.active && w.resources);
-    worlds.forEach((w) => {
-      w.resources.forEach((key) => ResourceLoader.updateResource(game, key));
-      if (!w._cache) w._cache = {};
-      w._cache.active = true;
+  static createTextureShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: textureVertexShader,
+      fragmentShaderSource: textureFragmentShader,
     });
-  }
+    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
 
-  static hasUnloadedResources(game, scene) {
-    const { resourceMap } = game;
-    const resources = ResourceLoader.getActiveResources(scene);
-    return resources.length > 0
-      && resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded);
-  }
-
-  static unloadWorldsResources(game, scene) {
-    const { resourceMap } = game;
-    const worlds = scene.worlds.filter((w) => w._cache && w._cache.active && !w.active);
-    const resources = [
-      ...scene.resources,
-      ...worlds.flatMap((world) => world.resources || []),
-    ];
-
-    worlds.forEach((w) => {
-      w._cache.active = false;
-    });
-    resources.forEach((key) => {
-      if (!resourceMap[key]) return;
-      resourceMap[key].ref--;
-      if (resourceMap[key].ref === 0) {
-        delete resourceMap[key];
-      }
-    });
-  }
-
-  static unloadResources(game, scene) {
-    const { resourceMap } = game;
-    const resources = [
-      ...scene.resources,
-      ...scene.worlds.flatMap((world) => world.resources || []),
-    ];
-    scene.worlds.forEach((w) => {
-      if (w._cache) w._cache.active = false;
-    });
-    resources.forEach((key) => {
-      if (!resourceMap[key]) return;
-      resourceMap[key].ref--;
-      if (resourceMap[key].ref === 0) {
-        delete resourceMap[key];
-      }
-    });
+    return {
+      ...shader,
+      shaderTextureCoordAttribute,
+    };
   }
 }
 
@@ -261,4 +278,5 @@ export const Color = {
   Red: [1, 0, 0, 1],
   Blue: [0, 0, 1, 1],
   Green: [0, 1, 0, 1],
+  Transparent: [0, 0, 0, 0],
 };

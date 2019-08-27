@@ -7,12 +7,13 @@ import { RenderComponent } from '../src/render-system';
 import { KeyboardKeys } from '../src/input-system';
 import { SceneParser } from '../src/scene-parser';
 import { AudioComponent, AudioSystem, SoundSystem } from '../src/audio-system';
+import { ImageLoader } from '../src/resources-system';
 
 export class Rectangle extends GameObject {
-  constructor({ color, transform }) {
+  constructor({ color, texture, transform }) {
     super();
     this.components = [
-      new RenderComponent({ color }),
+      new RenderComponent({ color, texture }),
       new TransformComponent(transform),
     ];
   }
@@ -163,6 +164,10 @@ class KeyboardChangeDemoSystem {
       // eslint-disable-next-line no-param-reassign
       game.currentScene = 1;
     }
+    if (keyboard.pressedKeys[KeyboardKeys.Three]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 2;
+    }
   }
 }
 
@@ -198,6 +203,34 @@ class MovementAudioSystem {
         audio.play = true;
       }
     });
+  }
+}
+
+class ColorUpdateComponent {
+  constructor({ color }) {
+    this.color = color;
+  }
+}
+
+class UpdatingColorSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const renderable = e.components.find((c) => c instanceof RenderComponent);
+      const colorDelta = e.components.find((c) => c instanceof ColorUpdateComponent);
+      if (!renderable || !colorDelta) return;
+      // continously change texture tinting
+      const { color } = renderable;
+      color.forEach((value, i) => this.mergeChannel(color, colorDelta.color, i));
+    });
+  }
+
+  mergeChannel(color1, color2, channel) {
+    let ca = color1[channel] + color2[channel];
+    if (ca > 1) {
+      ca = 0;
+    }
+    // eslint-disable-next-line no-param-reassign
+    color1[channel] = ca;
   }
 }
 
@@ -258,10 +291,55 @@ function parseDemo1(game) {
   game.addEntity(bottomLeft);
 }
 
+function parseDemo3(game) {
+  const camera = new CameraComponent({
+    center: [20, 60],
+    width: 20,
+    viewport: [20, 40, 600, 300],
+  });
+  game.addCamera(camera);
+
+  game.setResources(['./assets/images/minion_portal.jpg', './assets/images/minion_collector.jpg']);
+
+  const portal = new Rectangle({
+    color: Color.Transparent,
+    texture: './assets/images/minion_portal.jpg',
+    transform: new TransformComponent({
+      position: [25, 60],
+      size: [3, 3],
+    }),
+  });
+  game.addEntity(portal);
+  const collector = new Rectangle({
+    color: [1, 0, 0, 0],
+    texture: './assets/images/minion_collector.jpg',
+    transform: new TransformComponent({
+      position: [15, 60],
+      size: [3, 3],
+    }),
+  });
+  collector.components.push(new ColorUpdateComponent({ color: [0, 0, 0, 0.02] }));
+  game.addEntity(collector);
+
+  const heroTransform = new TransformComponent({
+    position: [20, 60],
+    size: [2, 2],
+  });
+  const hero = new Rectangle({ color: Color.Red, transform: heroTransform });
+  hero.components.push(new MovementComponent({ speed: 0.05, direction: [1, 0] }));
+  hero.components.push(new MovementKeysComponent({
+    right: KeyboardKeys.Right,
+    left: KeyboardKeys.Left,
+  }));
+  game.addEntity(hero);
+}
+
+
 function main() {
   const canvas = document.querySelector('#canvas');
 
   const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
+  game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.useBefore(new KeyboardChangeDemoSystem());
   fetch('assets/scenes/demo1/scene.json')
     .then((res) => res.json())
@@ -290,6 +368,13 @@ function main() {
       scene2.use(new MovementChangeLevelSystem());
       scene2.use(new MovementAudioSystem());
       scene2.use(new AudioSystem());
+
+
+      const scene3 = game.createScene();
+      parseDemo3(scene3);
+      scene3.use(new KeyboardMovementSystem());
+      scene3.use(new MovementSystem());
+      scene3.use(new UpdatingColorSystem());
 
       game.useAfter(new SoundSystem());
       game.start();

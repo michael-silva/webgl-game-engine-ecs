@@ -1,12 +1,27 @@
-import { mat4 } from 'gl-matrix';
 import { RenderUtils, Color, TransformUtils } from './utils';
 import { TransformComponent } from './systems';
 
+// @system
+export class PreRenderSystem {
+  constructor(bgColor = [0.0, 0.8, 0.0, 1.0]) {
+    this._bgColor = bgColor;
+  }
+
+  run(game) {
+    const { gl } = game.renderState;
+    const scene = game.scenes[game.currentScene];
+    RenderUtils.clearCanvas(gl, this._bgColor);
+    scene.cameras.forEach((camera) => {
+      RenderUtils.setupViewProjection(gl, camera);
+    });
+  }
+}
 
 // @component
 export class RenderComponent {
-  constructor({ color = Color.White } = {}) {
+  constructor({ color = Color.White, texture } = {}) {
     this.color = color;
+    this.texture = texture;
   }
 }
 
@@ -17,38 +32,40 @@ export class RenderSystem {
   }
 
   run(game) {
-    const { gl, glVertexBuffer, shaders } = game.renderState;
+    const { resourceMap } = game;
+    const { gl, buffers, shaders } = game.renderState;
     const scene = game.scenes[game.currentScene];
-    RenderUtils.clearCanvas(gl, this._bgColor);
-    scene.cameras.forEach((camera) => {
-      this.setupViewProjection(gl, camera);
-    });
 
+    // TODO: Refactor this logic to split the texture and no texture, make this extensibility
     scene.worlds.forEach((world) => {
       if (!world.active) return;
       world.entities.forEach((e) => {
         const renderable = e.components.find((c) => c instanceof RenderComponent);
         const transform = e.components.find((c) => c instanceof TransformComponent);
         if (!renderable || !transform) return;
-        if (!shaders.simpleShader || !shaders.simpleShader.modelTransform) return;
-        const { color } = renderable;
-        const { simpleShader } = shaders;
+        const shader = shaders.textureShader;
+        const { vertexBuffer, textureBuffer } = buffers;
+        const { color, texture } = renderable;
+        if (!shader || !shader.modelTransform) return;
+        if (texture && (!resourceMap[texture] || !resourceMap[texture].loaded)) return;
 
         scene.cameras.forEach((camera) => {
-          this.activateShader(gl, glVertexBuffer, simpleShader, color, camera);
+          if (texture) this.activateTexture(gl, resourceMap[texture].asset);
+          this.activateShader(gl, vertexBuffer, shader, color, camera);
+          if (texture) this.activateTextureShader(gl, textureBuffer, shader, texture);
         });
         const xform = TransformUtils.getXForm(transform);
-        gl.uniformMatrix4fv(simpleShader.modelTransform, false, xform);
+        gl.uniformMatrix4fv(shader.modelTransform, false, xform);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       });
     });
   }
 
-  activateShader(gl, glVertexBuffer, shader, color, camera) {
+  activateShader(gl, buffer, shader, color, camera) {
     gl.useProgram(shader.compiledShader);
     gl.uniformMatrix4fv(shader.viewProjection, false, camera.viewProjection);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, glVertexBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.vertexAttribPointer(shader.shaderVertexPositionAttribute,
       3, // each element is a 3-float (x,y.z)
       gl.FLOAT, // data type is FLOAT
@@ -60,48 +77,25 @@ export class RenderSystem {
     gl.uniform4fv(shader.pixelColor, color);
   }
 
-  setupViewProjection(gl, camera) {
-    // Step A: Set up and clear the Viewport
-    // Step A1: Set up the viewport: area on canvas to be drawn
-    gl.viewport(...camera.viewport);
-    // y position of bottom-left corner
-    // width of the area to be drawn
-    // height of the area to be drawn
-    // Step A2: set up the corresponding scissor area to limit clear area
-    gl.scissor(...camera.viewport);
-    // y position of bottom-left corner
-    // width of the area to be drawn
-    // height of the area to be drawn
-    // Step A3: set the color to be clear to black
-    gl.clearColor(...camera.bgColor); // set the color to be cleared
+  activateTextureShader(gl, buffer, shader) {
+    const { shaderTextureCoordAttribute } = shader;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(shaderTextureCoordAttribute);
+    gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  }
 
-    // Step A4: enable and clear the scissor area
-    gl.enable(gl.SCISSOR_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.disable(gl.SCISSOR_TEST);
-
-    // Step B: Set up the View-Projection transform operator
-    // Step B1: define the view matrix
-    mat4.lookAt(camera.viewMatrix,
-      [camera.center[0], camera.center[1], 10], // WC center
-      [camera.center[0], camera.center[1], 0], //
-      [0, 1, 0]); // orientation
-    // Step B2: define the projection matrix
-    const halfWCWidth = 0.5 * camera.width;
-    const halfWCHeight = halfWCWidth * (camera.viewport[3] / camera.viewport[2]);
-    // WCHeight = WCWidth * viewportHeight / viewportWidth
-    mat4.ortho(camera.projMatrix,
-      -halfWCWidth,
-      halfWCWidth,
-      // distant to left of WC
-      // distant to right of WC
-      // distant to bottom of WC
-      // distant to top of WC
-      -halfWCHeight,
-      halfWCHeight,
-      camera.nearPlane, // z-distant to near plane
-      camera.farPlane); // z-distant to far plane
-    // Step B3: concatnate view and project matrices
-    mat4.multiply(camera.viewProjection, camera.projMatrix, camera.viewMatrix);
+  activateTexture(gl, textureInfo) {
+    // Binds our texture reference to the current webGL texture functionality
+    gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
+    // To prevent texture wrappings
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // Handles how magnification and minimization filters will work.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    // For pixel-graphics where you want the texture to look "sharp"
+    //     do the following:
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   }
 }

@@ -1,4 +1,4 @@
-import { ResourceLoader } from './utils';
+import { ResourceLoader } from './resources-system';
 
 // @component
 export class TransformComponent {
@@ -33,7 +33,7 @@ export class GameLoopSystem {
 
       if (loopState.lagTime > ONE_SECOND) {
         console.log('Lag Time is too large. The loop stoped!');
-        loopState.isLoopRunning = false;
+      //  loopState.isLoopRunning = false;
       }
       while (loopState.lagTime >= MPF && loopState.isLoopRunning) {
         game.preSystems.forEach((s) => s.run(game));
@@ -62,13 +62,12 @@ export class LoaderSystem {
   run(game) {
     const { scenes, currentScene } = game;
     const scene = scenes[currentScene];
-    if (this._lastScene !== currentScene) {
+    if (this._lastScene !== currentScene && this._currentScene === -1) {
       this._currentScene = currentScene;
       // eslint-disable-next-line no-param-reassign
       game.currentScene = this.loadingScene;
       ResourceLoader.loadSceneResources(game, scene);
       if (this._lastScene >= 0) ResourceLoader.unloadResources(game, scenes[this._lastScene]);
-      this._lastScene = currentScene;
     }
     else if (ResourceLoader.hasUnloadedResources(game, scene)) {
       ResourceLoader.loadWorldsResources(game, scene);
@@ -77,6 +76,7 @@ export class LoaderSystem {
     else if (this._currentScene >= 0) {
       // eslint-disable-next-line no-param-reassign
       game.currentScene = this._currentScene;
+      this._lastScene = this._currentScene;
       this._currentScene = -1;
     }
   }
