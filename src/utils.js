@@ -50,7 +50,7 @@ export class RenderUtils {
     gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
-  static initSquareBuffer(gl) {
+  static initBuffers(gl) {
     const verticesOfSquare = [
       0.5, 0.5, 0.0,
       -0.5, 0.5, 0.0,
@@ -89,9 +89,22 @@ export class RenderUtils {
       gl.STATIC_DRAW,
     );
 
+    // Step B: Allocate and store texture coordinates
+    // Create a buffer on the gGL context for our vertex positions
+    const spriteBuffer = gl.createBuffer();
+    // Activate vertexBuffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, spriteBuffer);
+    // Loads verticesOfSquare into the vertexBuffer
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(textureCoordinates),
+      gl.DYNAMIC_DRAW,
+    );
+
     return {
       vertexBuffer,
       textureBuffer,
+      spriteBuffer,
     };
   }
 
@@ -175,6 +188,59 @@ export class RenderUtils {
     );
     return texInfo;
   }
+
+  static getElementUVCoordinateArray([left, right, bottom, top]) {
+    return [
+      right, top,
+      left, top,
+      right, bottom,
+      left, bottom,
+    ];
+  }
+
+  // the expected texture cooridnate array is an array of 8 floats where:
+  //  [0] [1]: is u/v cooridnate of Top-Right
+  //  [2] [3]: is u/v coordinate of Top-Left
+  //  [4] [5]: is u/v coordinate of Bottom-Right
+  //  [6] [7]: is u/v coordinate of Bottom-Left
+  static TextureCoordinateArray = Object.freeze({
+    Left: 2,
+    Right: 0,
+    Top: 1,
+    Bottom: 5,
+  });
+
+  static fromPixelPositions(texture, [left, right, bottom, top]) {
+    // entire image width, height
+    const imageW = texture.width;
+    const imageH = texture.height;
+    const texLeft = left / imageW;
+    const texRight = right / imageW;
+    const texBottom = bottom / imageH;
+    const texTop = top / imageH;
+    return [
+      texLeft,
+      texRight,
+      texBottom,
+      texTop,
+    ];
+  }
+
+  static toPixelPositions(texture, [left, right, bottom, top]) {
+    // entire image width, height
+    const imageW = texture.width;
+    const imageH = texture.height;
+    const texLeft = imageW * left;
+    const texRight = imageW * right;
+    const texBottom = imageH * bottom;
+    const texTop = imageH * top;
+    return [
+      texLeft,
+      texRight,
+      texBottom,
+      texTop,
+    ];
+  }
 }
 
 // @component
@@ -240,6 +306,8 @@ export class ShaderUtils {
     return {
       pixelColor,
       compiledShader,
+      vertexShader,
+      fragmentShader,
       modelTransform,
       viewProjection,
       shaderVertexPositionAttribute,

@@ -33,7 +33,7 @@ export class GameLoopSystem {
 
       if (loopState.lagTime > ONE_SECOND) {
         console.log('Lag Time is too large. The loop stoped!');
-      //  loopState.isLoopRunning = false;
+        loopState.isLoopRunning = false;
       }
       while (loopState.lagTime >= MPF && loopState.isLoopRunning) {
         game.preSystems.forEach((s) => s.run(game));

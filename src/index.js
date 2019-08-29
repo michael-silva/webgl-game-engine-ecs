@@ -166,7 +166,7 @@ export class GameEngine {
   constructor(canvas, { bgColor }) {
     this._game = new GameEntity();
     const gl = RenderUtils.getGL(canvas);
-    const vertexBuffer = RenderUtils.initSquareBuffer(gl);
+    const vertexBuffer = RenderUtils.initBuffers(gl);
     const state = new GameRenderState(gl, vertexBuffer);
     state.shaders = {
       simpleShader: ShaderUtils.createSimpleShader(state),

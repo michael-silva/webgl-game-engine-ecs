@@ -19,9 +19,10 @@ export class PreRenderSystem {
 
 // @component
 export class RenderComponent {
-  constructor({ color = Color.White, texture } = {}) {
+  constructor({ color = Color.White, texture, sprite } = {}) {
     this.color = color;
     this.texture = texture;
+    this.sprite = sprite;
   }
 }
 
@@ -43,16 +44,26 @@ export class RenderSystem {
         const renderable = e.components.find((c) => c instanceof RenderComponent);
         const transform = e.components.find((c) => c instanceof TransformComponent);
         if (!renderable || !transform) return;
-        const shader = shaders.textureShader;
-        const { vertexBuffer, textureBuffer } = buffers;
-        const { color, texture } = renderable;
+        const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
+        const { color, texture, sprite } = renderable;
+        const shader = texture ? shaders.textureShader : shaders.simpleShader;
         if (!shader || !shader.modelTransform) return;
         if (texture && (!resourceMap[texture] || !resourceMap[texture].loaded)) return;
 
         scene.cameras.forEach((camera) => {
           if (texture) this.activateTexture(gl, resourceMap[texture].asset);
           this.activateShader(gl, vertexBuffer, shader, color, camera);
-          if (texture) this.activateTextureShader(gl, textureBuffer, shader, texture);
+          if (texture) {
+            if (sprite) {
+              const { position } = sprite;
+              const textureAsset = resourceMap[texture].asset;
+              const pixelPosition = RenderUtils.fromPixelPositions(textureAsset, position);
+              const texCoordinate = RenderUtils.getElementUVCoordinateArray(pixelPosition);
+              this.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
+              this.activateTextureShader(gl, spriteBuffer, shader);
+            }
+            else this.activateTextureShader(gl, textureBuffer, shader);
+          }
         });
         const xform = TransformUtils.getXForm(transform);
         gl.uniformMatrix4fv(shader.modelTransform, false, xform);
@@ -84,6 +95,11 @@ export class RenderSystem {
     gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
   }
 
+  setTextureCoordinate(gl, buffer, textureCoordinate) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(textureCoordinate));
+  }
+
   activateTexture(gl, textureInfo) {
     // Binds our texture reference to the current webGL texture functionality
     gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
@@ -97,5 +113,17 @@ export class RenderSystem {
     //     do the following:
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  }
+
+  cleanUpBuffer(gl, buffer) {
+    gl.deleteBuffer(buffer);
+  }
+
+  cleanUp(gl, shader) {
+    const { compiledShader, vertexShader, fragmentShader } = shader;
+    gl.detachShader(compiledShader, vertexShader);
+    gl.detachShader(compiledShader, fragmentShader);
+    gl.deleteBuffer(vertexShader);
+    gl.deleteBuffer(fragmentShader);
   }
 }
