@@ -17,6 +17,42 @@ export class PreRenderSystem {
   }
 }
 
+// Assumption: first sprite in an animation is always the left-most element.
+export const AnimationType = Object.freeze({
+  AnimateRight: 0, // Animate from left to right, then restart to left
+  AnimateLeft: 1, // Animate from right to left, then restart to right
+  AnimateSwing: 2, // Animate first left to right, then animates backwards
+});
+
+export class SpriteAnimation {
+  firstSpriteLeft = 0.0; // 0.0 is left corner of image
+
+  top = 1.0;// 1.0 is top corner of image
+
+  // default sprite element size is the entire image
+  width = 1.0;
+
+  height = 1.0;
+
+  padding = 0.0;
+
+  numFrames = 1;
+
+  // number of elements in an animation
+  // per animation settings
+  animationType = AnimationType.AnimateRight;
+
+  updateInterval = 1;
+
+  // how often to advance
+  // current animation state
+  currentAnimAdvance = -1;
+
+  currentSprite = 0;
+
+  currentTick = 0;
+}
+
 // @component
 export class RenderComponent {
   constructor({ color = Color.White, texture, sprite } = {}) {
@@ -55,8 +91,9 @@ export class RenderSystem {
           this.activateShader(gl, vertexBuffer, shader, color, camera);
           if (texture) {
             if (sprite) {
-              const { position } = sprite;
+              const { position, animation } = sprite;
               const textureAsset = resourceMap[texture].asset;
+              if (animation) this.updateAnimation(sprite);
               const pixelPosition = RenderUtils.fromPixelPositions(textureAsset, position);
               const texCoordinate = RenderUtils.getElementUVCoordinateArray(pixelPosition);
               this.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
@@ -70,6 +107,51 @@ export class RenderSystem {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       });
     });
+  }
+
+  updateAnimation(sprite) {
+    const { animation } = sprite;
+    animation.currentTick++;
+    if (animation.currentTick >= animation.updateInterval) {
+      animation.currentTick = 0;
+      animation.currentSprite += animation.currentAnimAdvance;
+      if (animation.currentSprite >= 0
+        && animation.currentSprite < animation.numFrames
+        // eslint-disable-next-line no-underscore-dangle
+        && animation._type === animation.animationType) {
+        // eslint-disable-next-line no-param-reassign
+        sprite.position = this.getSpriteElement(animation);
+      }
+      else {
+        animation.currentTick = 0;
+        switch (animation.animationType) {
+          case AnimationType.AnimateRight:
+          default:
+            animation.currentSprite = 0;
+            animation.currentAnimAdvance = 1;
+            break;
+          case AnimationType.AnimateSwing:
+            animation.currentAnimAdvance *= -1;
+            animation.currentSprite += 2 * animation.currentAnimAdvance;
+            break;
+          case AnimationType.AnimateLeft:
+            animation.currentSprite = animation.numFrames - 1;
+            animation.currentAnimAdvance = -1;
+            break;
+        }
+        // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+        animation._type = animation.animationType;
+      }
+    }
+  }
+
+  getSpriteElement(animation) {
+    const left = animation.firstSpriteLeft
+      + (animation.currentSprite * (animation.width + animation.padding));
+    return [left,
+      left + animation.width,
+      animation.top - animation.height,
+      animation.top];
   }
 
   activateShader(gl, buffer, shader, color, camera) {

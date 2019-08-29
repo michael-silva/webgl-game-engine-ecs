@@ -1,4 +1,4 @@
-import { RenderComponent } from '../src/render-system';
+import { RenderComponent, SpriteAnimation, AnimationType } from '../src/render-system';
 import {
   MovementComponent, Rectangle, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
@@ -135,21 +135,6 @@ export default (game) => {
   }));
   scene.addEntity(fontSheet);
 
-  const spriteSheet = new Rectangle({
-    color: [1, 1, 1, 0],
-    texture: './assets/images/minion_sprite.png',
-    sprite: { position: [0, 1024, 0, 512] },
-    transform: new TransformComponent({
-      position: [26, 56],
-      size: [5, 2.5],
-    }),
-  });
-  spriteSheet.components.push(new SpritePositionDeltaComponent({
-    deltaTop: -0.001,
-    deltaLeft: 0.001,
-  }));
-  scene.addEntity(spriteSheet);
-
   const hero = new Rectangle({
     color: Color.Transparent,
     texture: './assets/images/minion_sprite.png',
@@ -165,6 +150,49 @@ export default (game) => {
     left: KeyboardKeys.Left,
   }));
   scene.addEntity(hero);
+
+
+  const rightMinion = new Rectangle({
+    color: [1, 1, 1, 0],
+    texture: './assets/images/minion_sprite.png',
+    sprite: {
+      position: [0, 204, 348, 512],
+      animation: Object.assign(new SpriteAnimation(), {
+        numFrames: 5,
+        width: 204,
+        height: 164,
+        top: 512,
+        left: 0,
+        updateInterval: 50,
+      }),
+    },
+    transform: new TransformComponent({
+      position: [26, 56.5],
+      size: [4, 3.2],
+    }),
+  });
+  scene.addEntity(rightMinion);
+  const leftMinion = new Rectangle({
+    color: [1, 1, 1, 0],
+    texture: './assets/images/minion_sprite.png',
+    sprite: {
+      position: [0, 204, 348, 512],
+      animation: Object.assign(new SpriteAnimation(), {
+        numFrames: 5,
+        width: 204,
+        height: 164,
+        top: 512,
+        left: 0,
+        animationType: AnimationType.AnimateSwing,
+        updateInterval: 10,
+      }),
+    },
+    transform: new TransformComponent({
+      position: [15, 56.5],
+      size: [4, 3.2],
+    }),
+  });
+  scene.addEntity(leftMinion);
 
   scene.use(new KeyboardMovementSystem());
   scene.use(new MovementSystem());
