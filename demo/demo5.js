@@ -1,10 +1,12 @@
+/* eslint-disable max-classes-per-file */
+
 import { SpriteAnimation } from '../src/render-system';
 import {
-  MovementComponent, Rectangle, MovementKeysComponent,
+  MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
 import { CameraComponent, GameObject } from '../src';
-import { Color, AnimationType } from '../src/utils';
+import { AnimationType, TransformUtils } from '../src/utils';
 import { TransformComponent, RenderComponent, TextComponent } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 
@@ -115,6 +117,128 @@ class Minion extends GameObject {
   }
 }
 
+class UpdateSpeedComponent {
+  constructor({ delta }) {
+    this.delta = delta;
+  }
+}
+
+class RotationKeysComponent {
+  constructor({ left, right }) {
+    this.left = left;
+    this.right = right;
+    this.disabled = false;
+  }
+}
+
+class BrainModeComponent {
+  constructor({ mode }) {
+    this.mode = mode;
+  }
+}
+
+class Brain extends GameObject {
+  constructor() {
+    super();
+    this.components.push(new RenderComponent({
+      color: [1, 1, 1, 0],
+      texture: './assets/images/minion_sprite.png',
+      sprite: { position: [600, 700, 0, 180] },
+    }));
+    this.components.push(new TransformComponent({
+      position: [50, 10],
+      size: [3, 5.4],
+    }));
+    this.components.push(new MovementComponent({ speed: 0.05, direction: [0, 1] }));
+    this.components.push(new UpdateSpeedComponent({ delta: 0.01 }));
+    this.components.push(new RotationKeysComponent({
+      left: KeyboardKeys.Left,
+      right: KeyboardKeys.Right,
+    }));
+    this.components.push(new BrainModeComponent({ mode: 'H' }));
+  }
+}
+
+class KeyboardRotationSystem {
+  run({ entities }, scene, { keyboard }) {
+    entities.forEach((e) => {
+      const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const movement = e.components.find((c) => c instanceof MovementComponent);
+      if (!transform || !rotationKeys || !movement || rotationKeys.disabled) return;
+      const delta = Math.PI * (1 / 180);
+      if (keyboard.pressedKeys[rotationKeys.left]) {
+        transform.rotationInRadians += delta;
+        movement.direction = TransformUtils.rotate(movement.direction, delta);
+      }
+      else if (keyboard.pressedKeys[rotationKeys.right]) {
+        transform.rotationInRadians -= delta;
+        movement.direction = TransformUtils.rotate(movement.direction, -delta);
+      }
+    });
+  }
+}
+
+class BrainTargetComponent {
+  constructor({ component }) {
+    this.component = component;
+  }
+}
+
+class BrainModeSystem {
+  run({ entities }, scene, { keyboard }) {
+    entities.forEach((e) => {
+      const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const movement = e.components.find((c) => c instanceof MovementComponent);
+      const brainMode = e.components.find((c) => c instanceof BrainModeComponent);
+      if (!transform || !rotationKeys || !movement || !brainMode) return;
+      const target = entities
+        .find((e2) => e2.components.find((c) => c instanceof BrainTargetComponent));
+      if (!target) return;
+      const targetTransform = target.components.find((c) => c instanceof TransformComponent);
+      if (!targetTransform) return;
+      let rate = 1;
+      switch (brainMode.mode) {
+        default:
+        case 'H':
+          rotationKeys.disabled = false; // player steers with arrow keys
+          break;
+        case 'K':
+          rate = 0.02; // graduate rate
+          // When "K" is typed, the following should also be executed.
+        // eslint-disable-next-line
+        case 'J':
+          // eslint-disable-next-line
+          const rotation = TransformUtils.rotateObjPointTo(
+            transform.position,
+            movement.direction,
+            targetTransform.position,
+            rate,
+          );
+          movement.direction = rotation.direction;
+          transform.rotationInRadians += rotation.radians;
+          rotationKeys.disabled = true;
+          break;
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.H]) { brainMode.mode = 'H'; }
+      if (keyboard.pressedKeys[KeyboardKeys.J]) { brainMode.mode = 'J'; }
+      if (keyboard.pressedKeys[KeyboardKeys.K]) { brainMode.mode = 'K'; }
+    });
+  }
+}
+
+class TextTrackBrainModeSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const text = e.components.find((c) => c instanceof TextComponent);
+      const brainMode = e.components.find((c) => c instanceof BrainModeComponent);
+      if (!text || !brainMode) return;
+      text.content = `Brain modes [H:keys, J:immediate, K:gradual]: ${brainMode.mode}`;
+    });
+  }
+}
+
 export default (game) => {
   const scene = game.createScene();
   const camera = new CameraComponent({
@@ -135,8 +259,16 @@ export default (game) => {
     './assets/fonts/Segment7-96.fnt',
   ]);
 
-  const messageSys = new GameObject();
-  messageSys.components.push(
+
+  const hero = new Hero();
+  hero.components.push(new BrainTargetComponent({ component: TransformComponent }));
+  scene.addEntity(hero);
+
+  const dyePack = new DyePack();
+  scene.addEntity(dyePack);
+
+  const brain = new Brain();
+  brain.components.push(
     new TextComponent({
       content: 'Status Message',
       position: [1, 2],
@@ -145,13 +277,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(messageSys);
-
-  const hero = new Hero();
-  scene.addEntity(hero);
-
-  const dyePack = new DyePack();
-  scene.addEntity(dyePack);
+  scene.addEntity(brain);
 
   // create 5 minions at random Y values
   const maxMinions = 10;
@@ -165,4 +291,7 @@ export default (game) => {
   scene.use(new KeyboardMovementSystem());
   scene.use(new MovementSystem());
   scene.use(new MovementPortalSystem());
+  scene.use(new KeyboardRotationSystem());
+  scene.use(new BrainModeSystem());
+  scene.use(new TextTrackBrainModeSystem());
 };

@@ -1,4 +1,4 @@
-import { vec3, mat4 } from 'gl-matrix';
+import { vec3, mat4, vec2 } from 'gl-matrix';
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
@@ -20,6 +20,52 @@ export class TransformUtils {
 
   static degreeToRadians(degree) {
     return degree * (Math.PI / 180.0);
+  }
+
+  static rotate(a, c) {
+    const r = [];
+    // perform rotation
+    r[0] = a[0] * Math.cos(c) - a[1] * Math.sin(c);
+    r[1] = a[0] * Math.sin(c) + a[1] * Math.cos(c);
+    return r;
+  }
+
+  static rotateObjPointTo(position, direction, target, rate) {
+    const result = {
+      direction,
+      radians: 0,
+    };
+    // Step A: determine if reach the destination position p
+    const dir = [];
+    vec2.sub(dir, target, position);
+    const len = vec2.length(dir);
+    if (len < Number.MIN_VALUE) return result; // we are there.
+    vec2.scale(dir, dir, 1 / len);
+
+    // Step B: compute the angle to rotate
+    const fdir = direction;
+    let cosTheta = vec2.dot(dir, fdir);
+    if (cosTheta > 0.999999) return result; // almost exactly the same direction
+
+    // Step C: clamp the cosTheda to -1 to 1
+    // in a perfect world, this would never happen! BUT ...
+    if (cosTheta > 1) { cosTheta = 1; }
+    else if (cosTheta < -1) { cosTheta = -1; }
+
+    // Step D: compute whether to rotate clockwise, or counterclockwise
+    const dir3d = vec3.fromValues(dir[0], dir[1], 0);
+    const f3d = vec3.fromValues(fdir[0], fdir[1], 0);
+    const r3d = [];
+    vec3.cross(r3d, f3d, dir3d);
+    let rad = Math.acos(cosTheta); // radian to roate
+    if (r3d[2] < 0) { rad = -rad; }
+
+    // Step E: rotate the facing direction with the angle and rate
+    rad *= rate; // actual angle need to rotate from Obj's front
+    result.direction = TransformUtils.rotate(direction, rad);
+    result.radians = rad;
+
+    return result;
   }
 }
 
