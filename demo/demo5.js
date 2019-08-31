@@ -6,8 +6,10 @@ import {
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
 import { CameraComponent, GameObject } from '../src';
-import { AnimationType, TransformUtils } from '../src/utils';
-import { TransformComponent, RenderComponent, TextComponent } from '../src/systems';
+import { AnimationType, TransformUtils, BoundingUtils } from '../src/utils';
+import {
+  TransformComponent, RenderComponent, TextComponent, CameraUtils,
+} from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 
 class MovementLimitComponent {
@@ -209,16 +211,28 @@ class BrainModeSystem {
           // When "K" is typed, the following should also be executed.
         // eslint-disable-next-line
         case 'J':
-          // eslint-disable-next-line
-          const rotation = TransformUtils.rotateObjPointTo(
-            transform.position,
-            movement.direction,
-            targetTransform.position,
-            rate,
-          );
-          movement.direction = rotation.direction;
-          transform.rotationInRadians += rotation.radians;
-          rotationKeys.disabled = true;
+          // stop brain when touches hero
+          if (BoundingUtils.intersectsBound(targetTransform, transform)) {
+            if (movement.speed !== 0) {
+              movement.oldSpeed = movement.speed;
+            }
+            movement.speed = 0;
+          }
+          else {
+            if (movement.speed === 0) {
+              movement.speed = movement.oldSpeed;
+            }
+            // eslint-disable-next-line
+            const rotation = TransformUtils.rotateObjPointTo(
+              transform.position,
+              movement.direction,
+              targetTransform.position,
+              rate,
+            );
+            movement.direction = rotation.direction;
+            transform.rotationInRadians += rotation.radians;
+            rotationKeys.disabled = true;
+          }
           break;
       }
       if (keyboard.pressedKeys[KeyboardKeys.H]) { brainMode.mode = 'H'; }
@@ -229,12 +243,21 @@ class BrainModeSystem {
 }
 
 class TextTrackBrainModeSystem {
-  run({ entities }) {
+  run({ entities }, { cameras }) {
     entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       const brainMode = e.components.find((c) => c instanceof BrainModeComponent);
       if (!text || !brainMode) return;
-      text.content = `Brain modes [H:keys, J:immediate, K:gradual]: ${brainMode.mode}`;
+      const target = entities
+        .find((e2) => e2.components.find((c) => c instanceof BrainTargetComponent));
+      if (!target) return;
+      const targetTransform = target.components.find((c) => c instanceof TransformComponent);
+      if (!targetTransform) return;
+      // Check for hero going outside 80% of the WC Window bound
+      const camTransform = CameraUtils.getTransform(cameras[0]);
+      const cameraArea = TransformUtils.resize(camTransform, 0.8);
+      const status = BoundingUtils.boundCollideStatus(targetTransform, cameraArea);
+      text.content = `[H:keys, J:immediate, K:gradual]: ${brainMode.mode} [Hero bound=${status}]`;
     });
   }
 }

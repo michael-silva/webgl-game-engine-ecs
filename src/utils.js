@@ -4,6 +4,49 @@ import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
 
+export class BoundingUtils {
+  static getBound(transform) {
+    const { size, position } = transform;
+    const left = position[0] - (size[0] / 2);
+    const right = left + size[0];
+    const bottom = position[1] - (size[1] / 2);
+    const top = bottom + size[1];
+
+    return [left, right, bottom, top];
+  }
+
+  static containsPoint(transform, [x, y]) {
+    const [left, right, bottom, top] = BoundingUtils.getBound(transform);
+    return ((x > left) && (x < right)
+      && (y > bottom) && (y < top));
+  }
+
+  static intersectsBound(transform, otherTransform) {
+    const [left, right, bottom, top] = BoundingUtils.getBound(transform);
+    const [oleft, oright, obottom, otop] = BoundingUtils.getBound(otherTransform);
+    return ((left < oright) && (right > oleft)
+      && (bottom < otop) && (top > obottom));
+  }
+
+  static boundCollideStatus(transform, otherTransform) {
+    const [left, right, bottom, top] = BoundingUtils.getBound(transform);
+    const [oleft, oright, obottom, otop] = BoundingUtils.getBound(otherTransform);
+    let collideStatus = [0, 0, 0, 0];
+    if (BoundingUtils.intersectsBound(transform, otherTransform)) {
+      if (oleft < left) { collideStatus[0] = 1; }
+      if (oright > right) { collideStatus[1] = 1; }
+      if (obottom < bottom) { collideStatus[2] = 1; }
+      if (otop > top) { collideStatus[3] = 1; }
+      // if the bounds intersects and yet none of the sides overlaps
+      // otherBound is completely inside thisBound
+      if (collideStatus.every((s) => s === 0)) {
+        collideStatus = collideStatus.map(() => 1);
+      }
+    }
+    return collideStatus;
+  }
+}
+
 export class TransformUtils {
   static getXForm(transform) {
     const { position = [0, 0], size = [1, 1], rotationInRadians = 0 } = transform;
@@ -16,6 +59,16 @@ export class TransformUtils {
     mat4.scale(xform, xform, vec3.fromValues(width, height, 1.0));
 
     return xform;
+  }
+
+  static resize(tranform, zone) {
+    return {
+      ...tranform,
+      size: [
+        tranform.size[0] * zone,
+        tranform.size[1] * zone,
+      ],
+    };
   }
 
   static degreeToRadians(degree) {

@@ -63,6 +63,14 @@ export class GameLoopSystem {
   }
 }
 
+export class CameraUtils {
+  static getTransform(camera) {
+    const position = camera.center;
+    const size = [camera.width, camera.width * (camera.viewport[3] / camera.viewport[2])];
+    return new TransformComponent({ position, size });
+  }
+}
+
 // @system
 export class LoaderSystem {
   _lastScene = -1;
