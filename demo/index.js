@@ -8,6 +8,7 @@ import initDemo1 from './demo1';
 import initDemo2 from './demo2';
 import initDemo3 from './demo3';
 import initDemo4 from './demo4';
+import initDemo5 from './demo5';
 import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
@@ -43,11 +44,12 @@ function main() {
       initDemo2(game, data);
       initDemo3(game);
       initDemo4(game);
+      initDemo5(game);
 
       game.useAfter(new SoundSystem());
       game.start();
       // eslint-disable-next-line
-      game._game.currentScene = 3
+      game._game.currentScene = 4
     });
 }
 
