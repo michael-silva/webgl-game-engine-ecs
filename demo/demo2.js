@@ -1,9 +1,8 @@
-import { TransformComponent } from '../src/systems';
+import { TransformComponent, RenderComponent } from '../src/systems';
 import {
   MovementComponent, MovementKeysComponent, KeyboardMovementSystem,
   MovementSystem, MovementChangeLevelSystem, MovementAudioSystem,
 } from './shared';
-import { RenderComponent } from '../src/render-system';
 import { AudioComponent, AudioSystem } from '../src/audio-system';
 import { SceneParser } from '../src/scene-parser';
 

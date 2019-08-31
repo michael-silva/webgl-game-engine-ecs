@@ -7,6 +7,8 @@ import { ImageLoader, AudioLoader } from '../src/resources-system';
 import initDemo1 from './demo1';
 import initDemo2 from './demo2';
 import initDemo3 from './demo3';
+import initDemo4 from './demo4';
+import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
   run(game) {
@@ -32,6 +34,7 @@ function main() {
   const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
+  game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });
   game.useBefore(new KeyboardChangeDemoSystem());
   fetch('assets/scenes/demo1/scene.json')
     .then((res) => res.json())
@@ -39,11 +42,12 @@ function main() {
       initDemo1(game);
       initDemo2(game, data);
       initDemo3(game);
+      initDemo4(game);
 
       game.useAfter(new SoundSystem());
       game.start();
       // eslint-disable-next-line
-      game._game.currentScene = 2
+      game._game.currentScene = 3
     });
 }
 

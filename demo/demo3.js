@@ -1,11 +1,11 @@
-import { RenderComponent, SpriteAnimation, AnimationType } from '../src/render-system';
+import { SpriteAnimation } from '../src/render-system';
 import {
   MovementComponent, Rectangle, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
 import { CameraComponent } from '../src';
-import { Color, RenderUtils } from '../src/utils';
-import { TransformComponent } from '../src/systems';
+import { Color, RenderUtils, AnimationType } from '../src/utils';
+import { TransformComponent, RenderComponent } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 
 class ColorUpdateComponent {
@@ -92,7 +92,10 @@ export default (game) => {
   });
   scene.addCamera(camera);
 
-  scene.setResources(['./assets/images/minion_sprite.png', './assets/images/Consolas-72.png']);
+  scene.setResources([
+    './assets/images/minion_sprite.png',
+    './assets/images/Consolas-72.png',
+  ]);
 
   const portal = new Rectangle({
     color: Color.Transparent,
@@ -193,7 +196,6 @@ export default (game) => {
     }),
   });
   scene.addEntity(leftMinion);
-
   scene.use(new KeyboardMovementSystem());
   scene.use(new MovementSystem());
   scene.use(new UpdatingColorSystem());

@@ -33,6 +33,14 @@ export class TextureInfo {
   }
 }
 
+
+// Assumption: first sprite in an animation is always the left-most element.
+export const AnimationType = Object.freeze({
+  AnimateRight: 0, // Animate from left to right, then restart to left
+  AnimateLeft: 1, // Animate from right to left, then restart to right
+  AnimateSwing: 2, // Animate first left to right, then animates backwards
+});
+
 export class RenderUtils {
   static getGL(canvas) {
     const gl = canvas.getContext('webgl', { alpha: false });
@@ -240,6 +248,136 @@ export class RenderUtils {
       texBottom,
       texTop,
     ];
+  }
+
+  static renderEntity(game, renderable, transform) {
+    const { resourceMap } = game;
+    const { gl, buffers, shaders } = game.renderState;
+    const scene = game.scenes[game.currentScene];
+    const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
+    const { color, texture, sprite } = renderable;
+    const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
+    const shader = textureAsset ? shaders.textureShader : shaders.simpleShader;
+
+    scene.cameras.forEach((camera) => {
+      if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
+      RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
+      if (textureAsset) {
+        if (sprite) {
+          const { position, animation } = sprite;
+          if (animation) RenderUtils.updateAnimation(sprite);
+          const pixelPosition = RenderUtils.fromPixelPositions(textureAsset, position);
+          const texCoordinate = RenderUtils.getElementUVCoordinateArray(pixelPosition);
+          RenderUtils.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
+          RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
+        }
+        else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+      }
+    });
+
+    const xform = TransformUtils.getXForm(transform);
+    gl.uniformMatrix4fv(shader.modelTransform, false, xform);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  static updateAnimation(sprite) {
+    const { animation } = sprite;
+    animation.currentTick++;
+    if (animation.currentTick >= animation.updateInterval) {
+      animation.currentTick = 0;
+      animation.currentSprite += animation.currentAnimAdvance;
+      if (animation.currentSprite >= 0
+        && animation.currentSprite < animation.numFrames
+        // eslint-disable-next-line no-underscore-dangle
+        && animation._type === animation.animationType) {
+        // eslint-disable-next-line no-param-reassign
+        sprite.position = RenderUtils.getSpriteElement(animation);
+      }
+      else {
+        animation.currentTick = 0;
+        switch (animation.animationType) {
+          case AnimationType.AnimateRight:
+          default:
+            animation.currentSprite = 0;
+            animation.currentAnimAdvance = 1;
+            break;
+          case AnimationType.AnimateSwing:
+            animation.currentAnimAdvance *= -1;
+            animation.currentSprite += 2 * animation.currentAnimAdvance;
+            break;
+          case AnimationType.AnimateLeft:
+            animation.currentSprite = animation.numFrames - 1;
+            animation.currentAnimAdvance = -1;
+            break;
+        }
+        // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+        animation._type = animation.animationType;
+      }
+    }
+  }
+
+  static getSpriteElement(animation) {
+    const left = animation.firstSpriteLeft
+      + (animation.currentSprite * (animation.width + animation.padding));
+    return [left,
+      left + animation.width,
+      animation.top - animation.height,
+      animation.top];
+  }
+
+  static activateShader(gl, buffer, shader, color, camera) {
+    gl.useProgram(shader.compiledShader);
+    gl.uniformMatrix4fv(shader.viewProjection, false, camera.viewProjection);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.vertexAttribPointer(shader.shaderVertexPositionAttribute,
+      3, // each element is a 3-float (x,y.z)
+      gl.FLOAT, // data type is FLOAT
+      false, // if the content is normalized vectors
+      0, // number of bytes to skip in between elements
+      0); // offsets to the first element
+
+    gl.enableVertexAttribArray(shader.shaderVertexPositionAttribute);
+    gl.uniform4fv(shader.pixelColor, color);
+  }
+
+  static activateTextureShader(gl, buffer, shader) {
+    const { shaderTextureCoordAttribute } = shader;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(shaderTextureCoordAttribute);
+    gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  }
+
+  static setTextureCoordinate(gl, buffer, textureCoordinate) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(textureCoordinate));
+  }
+
+  static activateTexture(gl, textureInfo) {
+    // Binds our texture reference to the current webGL texture functionality
+    gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
+    // To prevent texture wrappings
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // Handles how magnification and minimization filters will work.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    // For pixel-graphics where you want the texture to look "sharp"
+    //     do the following:
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  }
+
+  static cleanUpBuffer(gl, buffer) {
+    gl.deleteBuffer(buffer);
+  }
+
+  static cleanUp(gl, shader) {
+    const { compiledShader, vertexShader, fragmentShader } = shader;
+    gl.detachShader(compiledShader, vertexShader);
+    gl.detachShader(compiledShader, fragmentShader);
+    gl.deleteBuffer(vertexShader);
+    gl.deleteBuffer(fragmentShader);
   }
 }
 

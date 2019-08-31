@@ -1,6 +1,5 @@
 import { GameObject } from '../src';
-import { RenderComponent } from '../src/render-system';
-import { TransformComponent } from '../src/systems';
+import { TransformComponent, RenderComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
 
 export class Rectangle extends GameObject {
@@ -56,8 +55,8 @@ export class KeyboardMovementSystem {
       const movementKeys = e.components.find((c) => c instanceof MovementKeysComponent);
       if (!movement || !movementKeys) return;
       movement.direction = [0, 0];
-      if (keyboard.pressedKeys[movementKeys.up]) movement.direction[1] = -1;
-      if (keyboard.pressedKeys[movementKeys.down]) movement.direction[1] = 1;
+      if (keyboard.pressedKeys[movementKeys.up]) movement.direction[1] = 1;
+      if (keyboard.pressedKeys[movementKeys.down]) movement.direction[1] = -1;
       if (keyboard.pressedKeys[movementKeys.left]) movement.direction[0] = -1;
       if (keyboard.pressedKeys[movementKeys.right]) movement.direction[0] = 1;
     });
