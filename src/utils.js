@@ -509,15 +509,33 @@ export class RenderUtils {
     return texInfo.colorArray;
   }
 
-  static getPixelAlpha(textureInfo, x, y) {
-    const i = x * 4;
-    const j = y * 4;
-    return textureInfo.colorArray[(j * textureInfo.width) + i + 3];
+  static processTexture(textureInfo, sprite) {
+    const [left, right, bottom, top] = sprite
+      ? sprite.position
+      : [0, textureInfo.width, 0, textureInfo.height];
+
+    return {
+      colorArray: textureInfo.colorArray,
+      left,
+      bottom,
+      top,
+      right,
+      width: (right - left) + 1,
+      height: (top - bottom) + 1,
+      fullWidth: textureInfo.width,
+      fullHeight: textureInfo.height,
+    };
   }
 
-  static indexToWCPosition(transform, textureInfo, i, j, dirX, dirY) {
-    const x = i * (transform.size[0] / (textureInfo.width - 1));
-    const y = j * (transform.size[1] / (textureInfo.height - 1));
+  static getPixelAlpha(textureData, x, y) {
+    const i = (x + textureData.left) * 4;
+    const j = (y + textureData.bottom) * 4;
+    return textureData.colorArray[(j * textureData.fullWidth) + i + 3];
+  }
+
+  static indexToWCPosition(transform, textureData, i, j, dirX, dirY) {
+    const x = i * (transform.size[0] / (textureData.width - 1));
+    const y = j * (transform.size[1] / (textureData.height - 1));
 
     const dispX = x - (transform.size[0] * 0.5);
     const dispY = y - (transform.size[1] * 0.5);
@@ -531,15 +549,13 @@ export class RenderUtils {
       dirY[1] * dispY,
     ];
 
-    // console.log(dirDispX, dirDispY, 'disp');
-
     return [
       transform.position[0] + dirDispX[0] + dirDispY[0],
       transform.position[1] + dirDispX[1] + dirDispY[1],
     ];
   }
 
-  static wcPositionToIndex(transform, textureInfo, wcPosition, dirX, dirY) {
+  static wcPositionToIndex(transform, textureData, wcPosition, dirX, dirY) {
     const returnIndex = [
       wcPosition[0] - transform.position[0],
       wcPosition[1] - transform.position[1],
@@ -547,22 +563,24 @@ export class RenderUtils {
     // use wcPos to compute the corresponding returnIndex[0 and 1]
     const xDisp = returnIndex[0] * dirX[0] + returnIndex[1] * dirX[1];
     const yDisp = returnIndex[0] * dirY[0] + returnIndex[1] * dirY[1];
-    returnIndex[0] = textureInfo.width * (xDisp / transform.size[0]);
-    returnIndex[1] = textureInfo.height * (yDisp / transform.size[1]);
+    returnIndex[0] = textureData.width * (xDisp / transform.size[0]);
+    returnIndex[1] = textureData.height * (yDisp / transform.size[1]);
     // recall that xForm.getPosition() returns center, yet Texture origin is at lower-left corner!
-    returnIndex[0] += textureInfo.width / 2;
-    returnIndex[1] += textureInfo.height / 2;
+    returnIndex[0] += textureData.width / 2;
+    returnIndex[1] += textureData.height / 2;
 
     returnIndex[0] = Math.floor(returnIndex[0]);
     returnIndex[1] = Math.floor(returnIndex[1]);
 
-    // console.log('wcPos', returnIndex);
-
     return returnIndex;
   }
 
-  static pixelTouches(transform, textureInfo, otherTransform, otherTextureInfo) {
+  static pixelTouches(
+    transform, textureInfo, sprite, otherTransform, otherTextureInfo, otherSprite,
+  ) {
     const pixelTouch = null;
+    const textureData = RenderUtils.processTexture(textureInfo, sprite);
+    const otherTextureData = RenderUtils.processTexture(otherTextureInfo, otherSprite);
     let xIndex = 0;
     let yIndex = 0;
     const xDir = [1, 0];
@@ -574,22 +592,20 @@ export class RenderUtils {
     vec2.rotate(otherXDir, otherXDir, [0, 0], otherTransform.rotationInRadians);
     vec2.rotate(otherYDir, otherYDir, [0, 0], otherTransform.rotationInRadians);
 
-    while ((!pixelTouch) && (xIndex < textureInfo.width)) {
+    while ((!pixelTouch) && (xIndex < textureData.width)) {
       yIndex = 0;
-      while ((!pixelTouch) && (yIndex < textureInfo.height)) {
-        if (RenderUtils.getPixelAlpha(textureInfo, xIndex, yIndex) > 0) {
+      while ((!pixelTouch) && (yIndex < textureData.height)) {
+        if (RenderUtils.getPixelAlpha(textureData, xIndex, yIndex) > 0) {
           const wcTouchPos = RenderUtils.indexToWCPosition(
-            transform, textureInfo, xIndex, yIndex, xDir, yDir,
+            transform, textureData, xIndex, yIndex, xDir, yDir,
           );
           const otherIndex = RenderUtils.wcPositionToIndex(
-            otherTransform, otherTextureInfo, wcTouchPos, otherXDir, otherYDir,
+            otherTransform, otherTextureData, wcTouchPos, otherXDir, otherYDir,
           );
-          // console.log(wcTouchPos, 'alm');
-          if ((otherIndex[0] > 0) && (otherIndex[0] < otherTextureInfo.width)
-                    && (otherIndex[1] > 0) && (otherIndex[1] < otherTextureInfo.height)) {
+          if ((otherIndex[0] > 0) && (otherIndex[0] < otherTextureData.width)
+                    && (otherIndex[1] > 0) && (otherIndex[1] < otherTextureData.height)) {
             // eslint-disable-next-line
-            if (RenderUtils.getPixelAlpha(otherTextureInfo, otherIndex[0], otherIndex[1]) > 0) {
-              // console.log(wcTouchPos, 'ok');
+            if (RenderUtils.getPixelAlpha(otherTextureData, otherIndex[0], otherIndex[1]) > 0) {
               return wcTouchPos;
             }
           }

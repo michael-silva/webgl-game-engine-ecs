@@ -37,7 +37,8 @@ class Portal extends GameObject {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
-      texture: './assets/images/minion_portal.png',
+      sprite: { position: [130, 310, 0, 180] },
+      texture: './assets/images/minion_sprite.png',
     }));
     this.components.push(new TransformComponent({
       position: [70, 30],
@@ -58,7 +59,8 @@ class Collector extends GameObject {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
-      texture: './assets/images/minion_collector.png',
+      sprite: { position: [315, 495, 0, 180] },
+      texture: './assets/images/minion_sprite.png',
     }));
     this.components.push(new TransformComponent({
       position: [50, 30],
@@ -127,9 +129,11 @@ class CollisionSystem {
             const pixelTouch = this.getPixelTouch(
               gl,
               transform,
+              rendeable.sprite,
               textureInfo,
               otherTransform,
               otherTextureInfo,
+              otherRenderable.sprite,
             );
             dyeCollision.pixelTouch = pixelTouch;
             odyeCollision.pixelTouch = pixelTouch;
@@ -147,9 +151,11 @@ class CollisionSystem {
             const pixelTouch = this.getPixelTouch(
               gl,
               transform,
+              rendeable.sprite,
               textureInfo,
               otherTransform,
               otherTextureInfo,
+              otherRenderable.sprite,
             );
             dyeCollision.pixelTouch = pixelTouch;
             odyeCollision.pixelTouch = pixelTouch;
@@ -159,14 +165,16 @@ class CollisionSystem {
     });
   }
 
-  getPixelTouch(gl, transform, textureInfo, otherTransform, otherTextureInfo) {
+  getPixelTouch(gl, transform, sprite, textureInfo, otherTransform, otherTextureInfo, otherSprite) {
     RenderUtils.readColorArray(gl, textureInfo);
     RenderUtils.readColorArray(gl, otherTextureInfo);
     return RenderUtils.pixelTouches(
       transform,
       textureInfo,
+      sprite,
       otherTransform,
       otherTextureInfo,
+      otherSprite,
     );
   }
 }
