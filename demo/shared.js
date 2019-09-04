@@ -1,6 +1,7 @@
 import { GameObject } from '../src';
 import { TransformComponent, RenderComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
+import { TransformUtils } from '../src/utils';
 
 export class Rectangle extends GameObject {
   constructor({
@@ -93,6 +94,35 @@ export class MovementAudioSystem {
       if (!movement || !audio) return;
       if (movement.direction[0] !== 0) {
         audio.play = true;
+      }
+    });
+  }
+}
+
+
+export class RotationKeysComponent {
+  constructor({ left, right }) {
+    this.left = left;
+    this.right = right;
+    this.disabled = false;
+  }
+}
+
+export class KeyboardRotationSystem {
+  run({ entities }, scene, { keyboard }) {
+    entities.forEach((e) => {
+      const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const movement = e.components.find((c) => c instanceof MovementComponent);
+      if (!transform || !rotationKeys || !movement || rotationKeys.disabled) return;
+      const delta = Math.PI * (1 / 180);
+      if (keyboard.pressedKeys[rotationKeys.left]) {
+        transform.rotationInRadians += delta;
+        movement.direction = TransformUtils.rotate(movement.direction, delta);
+      }
+      else if (keyboard.pressedKeys[rotationKeys.right]) {
+        transform.rotationInRadians -= delta;
+        movement.direction = TransformUtils.rotate(movement.direction, -delta);
       }
     });
   }

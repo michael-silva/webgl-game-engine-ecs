@@ -9,6 +9,7 @@ import initDemo2 from './demo2';
 import initDemo3 from './demo3';
 import initDemo4 from './demo4';
 import initDemo5 from './demo5';
+import initDemo6 from './demo6';
 import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
@@ -25,6 +26,22 @@ export class KeyboardChangeDemoSystem {
     if (keyboard.pressedKeys[KeyboardKeys.Three]) {
       // eslint-disable-next-line no-param-reassign
       game.currentScene = 2;
+    }
+    if (keyboard.pressedKeys[KeyboardKeys.Four]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 3;
+    }
+    if (keyboard.pressedKeys[KeyboardKeys.Five]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 4;
+    }
+    if (keyboard.pressedKeys[KeyboardKeys.Six]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 5;
+    }
+    if (keyboard.pressedKeys[KeyboardKeys.Seven]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 6;
     }
   }
 }
@@ -45,11 +62,12 @@ function main() {
       initDemo3(game);
       initDemo4(game);
       initDemo5(game);
+      initDemo6(game);
 
       game.useAfter(new SoundSystem());
       game.start();
       // eslint-disable-next-line
-      game._game.currentScene = 4
+      game._game.currentScene = 5
     });
 }
 

@@ -1,5 +1,5 @@
 import { ResourceLoader, ImageLoader } from './resources-system';
-import { Color, RenderUtils } from './utils';
+import { Color, RenderUtils, FontUtils } from './utils';
 
 
 // @component
@@ -104,83 +104,16 @@ export class LoaderSystem {
   }
 }
 
-export class CharacterInfo {
-  constructor() {
-    // in texture coordinate (0 to 1) maps to the entier image
-    this.texCoordLeft = 0;
-    this.texCoordRight = 1;
-    this.texCoordBottom = 0;
-    this.texCoordTop = 0;
-
-    // nominal character size, 1 is "standard width/height" of a char
-    this.charWidth = 1;
-    this.charHeight = 1;
-    this.charWidthOffset = 0;
-    this.charHeightOffset = 0;
-
-    // reference of char width/height ration
-    this.charAspectRatio = 1;
-  }
-}
-
-export class FontUtils {
-  static getCharInfo(fontInfo, character) {
-    // eslint-disable-next-line no-param-reassign
-    if (!fontInfo.chars) fontInfo.chars = [];
-    if (fontInfo.chars[character]) return fontInfo.chars[character];
-    let returnInfo = null;
-    const commonPath = 'font/common';
-    let commonInfo = fontInfo.evaluate(commonPath, fontInfo, null, XPathResult.ANY_TYPE, null);
-    commonInfo = commonInfo.iterateNext();
-    if (commonInfo === null) {
-      return returnInfo;
-    }
-    const charSize = commonInfo.getAttribute('base');
-
-    const charPath = `font/chars/char[@id=${character}]`;
-    let charInfo = fontInfo.evaluate(charPath, fontInfo, null, XPathResult.ANY_TYPE, null);
-    charInfo = charInfo.iterateNext();
-
-    if (charInfo === null) {
-      return returnInfo;
-    }
-
-    returnInfo = new CharacterInfo();
-    const texInfo = fontInfo.texture;
-    const leftPixel = Number(charInfo.getAttribute('x'));
-    const rightPixel = leftPixel + Number(charInfo.getAttribute('width')) - 1;
-    const topPixel = (texInfo.height - 1) - Number(charInfo.getAttribute('y'));
-    const bottomPixel = topPixel - Number(charInfo.getAttribute('height')) + 1;
-
-    // texture coordinate information
-    returnInfo.texCoordLeft = leftPixel / (texInfo.width - 1);
-    returnInfo.texCoordTop = topPixel / (texInfo.height - 1);
-    returnInfo.texCoordRight = rightPixel / (texInfo.width - 1);
-    returnInfo.texCoordBottom = bottomPixel / (texInfo.height - 1);
-
-    returnInfo.charWidthOffset = 0;
-    returnInfo.xAdvance = 0;
-
-    // relative character size
-    returnInfo.charWidth = charInfo.getAttribute('width') / charSize;
-    returnInfo.charHeight = charInfo.getAttribute('height') / charSize;
-
-    if (returnInfo.charWidth > 0) {
-      returnInfo.charWidthOffset = charInfo.getAttribute('xoffset') / charSize;
-      returnInfo.xAdvance = charInfo.getAttribute('xadvance') / charInfo.getAttribute('width');
-    }
-    else {
-      returnInfo.charWidth = charInfo.getAttribute('xadvance') / charSize;
-      returnInfo.xAdvance = 1.0;
-    }
-    returnInfo.charHeightOffset = charInfo.getAttribute('yoffset') / charSize;
-    // returnInfo.charAspectRatio = charWidth / charHeight;
-
-    returnInfo.charHeightOffset = charInfo.getAttribute('yoffset') / charSize;
-
-    // eslint-disable-next-line no-param-reassign
-    fontInfo.chars[character] = returnInfo;
-    return returnInfo;
+// @system
+export class GarbageCollectorSystem {
+  run(game) {
+    const { scenes, currentScene } = game;
+    const scene = scenes[currentScene];
+    scene.worlds.forEach((world) => {
+      if (!world.active) return;
+      // eslint-disable-next-line
+      world.entities = world.entities.filter((e) => !e._destroyed);
+    });
   }
 }
 

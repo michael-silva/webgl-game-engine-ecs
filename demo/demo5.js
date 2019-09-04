@@ -3,7 +3,7 @@
 import { SpriteAnimation } from '../src/render-system';
 import {
   MovementComponent, MovementKeysComponent,
-  MovementSystem, KeyboardMovementSystem,
+  MovementSystem, KeyboardMovementSystem, RotationKeysComponent, KeyboardRotationSystem,
 } from './shared';
 import { CameraComponent, GameObject } from '../src';
 import { AnimationType, TransformUtils, BoundingUtils } from '../src/utils';
@@ -125,14 +125,6 @@ class UpdateSpeedComponent {
   }
 }
 
-class RotationKeysComponent {
-  constructor({ left, right }) {
-    this.left = left;
-    this.right = right;
-    this.disabled = false;
-  }
-}
-
 class BrainModeComponent {
   constructor({ mode }) {
     this.mode = mode;
@@ -158,26 +150,6 @@ class Brain extends GameObject {
       right: KeyboardKeys.Right,
     }));
     this.components.push(new BrainModeComponent({ mode: 'H' }));
-  }
-}
-
-class KeyboardRotationSystem {
-  run({ entities }, scene, { keyboard }) {
-    entities.forEach((e) => {
-      const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
-      const transform = e.components.find((c) => c instanceof TransformComponent);
-      const movement = e.components.find((c) => c instanceof MovementComponent);
-      if (!transform || !rotationKeys || !movement || rotationKeys.disabled) return;
-      const delta = Math.PI * (1 / 180);
-      if (keyboard.pressedKeys[rotationKeys.left]) {
-        transform.rotationInRadians += delta;
-        movement.direction = TransformUtils.rotate(movement.direction, delta);
-      }
-      else if (keyboard.pressedKeys[rotationKeys.right]) {
-        transform.rotationInRadians -= delta;
-        movement.direction = TransformUtils.rotate(movement.direction, -delta);
-      }
-    });
   }
 }
 

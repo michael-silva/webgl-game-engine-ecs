@@ -2,7 +2,10 @@
 
 import { mat4, vec2 } from 'gl-matrix';
 import { RenderUtils, ShaderUtils } from './utils';
-import { GameLoopSystem, LoaderSystem, TextSystem } from './systems';
+import {
+  GameLoopSystem, LoaderSystem,
+  TextSystem, GarbageCollectorSystem,
+} from './systems';
 import { RenderSystem, PreRenderSystem } from './render-system';
 import { InputSystem } from './input-system';
 
@@ -87,6 +90,10 @@ export class GameEntity {
 // @entity
 export class GameObject {
   components = []
+
+  destroy() {
+    this._destroyed = true;
+  }
 }
 
 
@@ -179,6 +186,7 @@ export class GameEngine {
     this.useAfter(new PreRenderSystem(bgColor));
     this.useAfter(new RenderSystem());
     this.useAfter(new TextSystem());
+    this.useAfter(new GarbageCollectorSystem());
   }
 
   createScene() {

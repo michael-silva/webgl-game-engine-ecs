@@ -478,6 +478,128 @@ export class RenderUtils {
     gl.deleteBuffer(vertexShader);
     gl.deleteBuffer(fragmentShader);
   }
+
+  static readColorArray(gl, texInfo) {
+    if (texInfo.colorArray === null) {
+      // create a framebuffer, bind it to the texture, and read the color content
+      const fb = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0,
+        gl.TEXTURE_2D,
+        texInfo.texID,
+        0,
+      );
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
+        const pixels = new Uint8Array(texInfo.width * texInfo.height * 4);
+        const { width, height } = texInfo;
+        const { RGBA, UNSIGNED_BYTE } = gl;
+        gl.readPixels(0, 0, width, height, RGBA, UNSIGNED_BYTE, pixels);
+        // eslint-disable-next-line
+        texInfo.colorArray = pixels;
+      }
+      else {
+        throw new Error(`Error when try to get color array from texture ${texInfo.textureName}`);
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.deleteFramebuffer(fb);
+    }
+    return texInfo.colorArray;
+  }
+
+  static getPixelAlpha(textureInfo, x, y) {
+    const i = x * 4;
+    const j = y * 4;
+    return textureInfo.colorArray[(j * textureInfo.width) + i + 3];
+  }
+
+  static indexToWCPosition(transform, textureInfo, i, j, dirX, dirY) {
+    const x = i * (transform.size[0] / (textureInfo.width - 1));
+    const y = j * (transform.size[1] / (textureInfo.height - 1));
+
+    const dispX = x - (transform.size[0] * 0.5);
+    const dispY = y - (transform.size[1] * 0.5);
+
+    const dirDispX = [
+      dirX[0] * dispX,
+      dirX[1] * dispX,
+    ];
+    const dirDispY = [
+      dirY[0] * dispY,
+      dirY[1] * dispY,
+    ];
+
+    // console.log(dirDispX, dirDispY, 'disp');
+
+    return [
+      transform.position[0] + dirDispX[0] + dirDispY[0],
+      transform.position[1] + dirDispX[1] + dirDispY[1],
+    ];
+  }
+
+  static wcPositionToIndex(transform, textureInfo, wcPosition, dirX, dirY) {
+    const returnIndex = [
+      wcPosition[0] - transform.position[0],
+      wcPosition[1] - transform.position[1],
+    ];
+    // use wcPos to compute the corresponding returnIndex[0 and 1]
+    const xDisp = returnIndex[0] * dirX[0] + returnIndex[1] * dirX[1];
+    const yDisp = returnIndex[0] * dirY[0] + returnIndex[1] * dirY[1];
+    returnIndex[0] = textureInfo.width * (xDisp / transform.size[0]);
+    returnIndex[1] = textureInfo.height * (yDisp / transform.size[1]);
+    // recall that xForm.getPosition() returns center, yet Texture origin is at lower-left corner!
+    returnIndex[0] += textureInfo.width / 2;
+    returnIndex[1] += textureInfo.height / 2;
+
+    returnIndex[0] = Math.floor(returnIndex[0]);
+    returnIndex[1] = Math.floor(returnIndex[1]);
+
+    // console.log('wcPos', returnIndex);
+
+    return returnIndex;
+  }
+
+  static pixelTouches(transform, textureInfo, otherTransform, otherTextureInfo) {
+    const pixelTouch = null;
+    let xIndex = 0;
+    let yIndex = 0;
+    const xDir = [1, 0];
+    const yDir = [0, 1];
+    const otherXDir = [1, 0];
+    const otherYDir = [0, 1];
+    vec2.rotate(xDir, xDir, [0, 0], transform.rotationInRadians);
+    vec2.rotate(yDir, yDir, [0, 0], transform.rotationInRadians);
+    vec2.rotate(otherXDir, otherXDir, [0, 0], otherTransform.rotationInRadians);
+    vec2.rotate(otherYDir, otherYDir, [0, 0], otherTransform.rotationInRadians);
+
+    while ((!pixelTouch) && (xIndex < textureInfo.width)) {
+      yIndex = 0;
+      while ((!pixelTouch) && (yIndex < textureInfo.height)) {
+        if (RenderUtils.getPixelAlpha(textureInfo, xIndex, yIndex) > 0) {
+          const wcTouchPos = RenderUtils.indexToWCPosition(
+            transform, textureInfo, xIndex, yIndex, xDir, yDir,
+          );
+          const otherIndex = RenderUtils.wcPositionToIndex(
+            otherTransform, otherTextureInfo, wcTouchPos, otherXDir, otherYDir,
+          );
+          // console.log(wcTouchPos, 'alm');
+          if ((otherIndex[0] > 0) && (otherIndex[0] < otherTextureInfo.width)
+                    && (otherIndex[1] > 0) && (otherIndex[1] < otherTextureInfo.height)) {
+            // eslint-disable-next-line
+            if (RenderUtils.getPixelAlpha(otherTextureInfo, otherIndex[0], otherIndex[1]) > 0) {
+              // console.log(wcTouchPos, 'ok');
+              return wcTouchPos;
+            }
+          }
+        }
+        yIndex++;
+      }
+      xIndex++;
+    }
+    return null;
+  }
 }
 
 // @component
@@ -585,3 +707,83 @@ export const Color = {
   Green: [0, 1, 0, 1],
   Transparent: [0, 0, 0, 0],
 };
+
+export class CharacterInfo {
+  constructor() {
+    // in texture coordinate (0 to 1) maps to the entier image
+    this.texCoordLeft = 0;
+    this.texCoordRight = 1;
+    this.texCoordBottom = 0;
+    this.texCoordTop = 0;
+
+    // nominal character size, 1 is "standard width/height" of a char
+    this.charWidth = 1;
+    this.charHeight = 1;
+    this.charWidthOffset = 0;
+    this.charHeightOffset = 0;
+
+    // reference of char width/height ration
+    this.charAspectRatio = 1;
+  }
+}
+
+export class FontUtils {
+  static getCharInfo(fontInfo, character) {
+    // eslint-disable-next-line no-param-reassign
+    if (!fontInfo.chars) fontInfo.chars = [];
+    if (fontInfo.chars[character]) return fontInfo.chars[character];
+    let returnInfo = null;
+    const commonPath = 'font/common';
+    let commonInfo = fontInfo.evaluate(commonPath, fontInfo, null, XPathResult.ANY_TYPE, null);
+    commonInfo = commonInfo.iterateNext();
+    if (commonInfo === null) {
+      return returnInfo;
+    }
+    const charSize = commonInfo.getAttribute('base');
+
+    const charPath = `font/chars/char[@id=${character}]`;
+    let charInfo = fontInfo.evaluate(charPath, fontInfo, null, XPathResult.ANY_TYPE, null);
+    charInfo = charInfo.iterateNext();
+
+    if (charInfo === null) {
+      return returnInfo;
+    }
+
+    returnInfo = new CharacterInfo();
+    const texInfo = fontInfo.texture;
+    const leftPixel = Number(charInfo.getAttribute('x'));
+    const rightPixel = leftPixel + Number(charInfo.getAttribute('width')) - 1;
+    const topPixel = (texInfo.height - 1) - Number(charInfo.getAttribute('y'));
+    const bottomPixel = topPixel - Number(charInfo.getAttribute('height')) + 1;
+
+    // texture coordinate information
+    returnInfo.texCoordLeft = leftPixel / (texInfo.width - 1);
+    returnInfo.texCoordTop = topPixel / (texInfo.height - 1);
+    returnInfo.texCoordRight = rightPixel / (texInfo.width - 1);
+    returnInfo.texCoordBottom = bottomPixel / (texInfo.height - 1);
+
+    returnInfo.charWidthOffset = 0;
+    returnInfo.xAdvance = 0;
+
+    // relative character size
+    returnInfo.charWidth = charInfo.getAttribute('width') / charSize;
+    returnInfo.charHeight = charInfo.getAttribute('height') / charSize;
+
+    if (returnInfo.charWidth > 0) {
+      returnInfo.charWidthOffset = charInfo.getAttribute('xoffset') / charSize;
+      returnInfo.xAdvance = charInfo.getAttribute('xadvance') / charInfo.getAttribute('width');
+    }
+    else {
+      returnInfo.charWidth = charInfo.getAttribute('xadvance') / charSize;
+      returnInfo.xAdvance = 1.0;
+    }
+    returnInfo.charHeightOffset = charInfo.getAttribute('yoffset') / charSize;
+    // returnInfo.charAspectRatio = charWidth / charHeight;
+
+    returnInfo.charHeightOffset = charInfo.getAttribute('yoffset') / charSize;
+
+    // eslint-disable-next-line no-param-reassign
+    fontInfo.chars[character] = returnInfo;
+    return returnInfo;
+  }
+}
