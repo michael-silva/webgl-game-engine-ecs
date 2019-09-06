@@ -1,16 +1,14 @@
-/* eslint-disable max-classes-per-file */
-
-import { SpriteAnimation } from '../src/render-system';
 import {
-  MovementComponent, MovementKeysComponent,
+  MovementComponent,
   MovementSystem, KeyboardMovementSystem, RotationKeysComponent, KeyboardRotationSystem,
 } from './shared';
 import { CameraComponent, GameObject } from '../src';
-import { AnimationType, TransformUtils, BoundingUtils } from '../src/utils';
+import { TransformUtils, BoundingUtils } from '../src/utils';
 import {
   TransformComponent, RenderComponent, TextComponent, CameraUtils,
 } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
+import { Minion, Hero, Brain } from './objects';
 
 class MovementLimitComponent {
   constructor({
@@ -67,89 +65,9 @@ class DyePack extends GameObject {
   }
 }
 
-class Hero extends GameObject {
-  constructor() {
-    super();
-    this.components.push(new RenderComponent({
-      color: [1, 1, 1, 0],
-      texture: './assets/images/minion_sprite.png',
-      sprite: { position: [0, 120, 0, 180] },
-    }));
-    this.components.push(new TransformComponent({
-      position: [35, 50],
-      size: [9, 12],
-    }));
-    this.components.push(new MovementComponent({ speed: 0.3 }));
-    this.components.push(new MovementKeysComponent({
-      right: KeyboardKeys.D,
-      left: KeyboardKeys.A,
-      up: KeyboardKeys.W,
-      down: KeyboardKeys.S,
-    }));
-  }
-}
-
-class Minion extends GameObject {
-  constructor(x, y) {
-    super();
-    this.components.push(new RenderComponent({
-      color: [1, 1, 1, 0],
-      texture: './assets/images/minion_sprite.png',
-      sprite: {
-        position: [0, 204, 348, 512],
-        animation: Object.assign(new SpriteAnimation(), {
-          numFrames: 5,
-          width: 204,
-          height: 164,
-          top: 512,
-          left: 0,
-          animationType: AnimationType.AnimateSwing,
-          updateInterval: 15,
-        }),
-      },
-    }));
-    this.components.push(new TransformComponent({
-      position: [x, y],
-      size: [12, 9.6],
-    }));
-    this.components.push(new MovementComponent({ speed: 0.2, direction: [-1, 0] }));
-    this.components.push(new MovementLimitComponent({
-      minX: 0, maxX: 100, minY: 0, maxY: 65,
-    }));
-  }
-}
-
-class UpdateSpeedComponent {
-  constructor({ delta }) {
-    this.delta = delta;
-  }
-}
-
 class BrainModeComponent {
   constructor({ mode }) {
     this.mode = mode;
-  }
-}
-
-class Brain extends GameObject {
-  constructor() {
-    super();
-    this.components.push(new RenderComponent({
-      color: [1, 1, 1, 0],
-      texture: './assets/images/minion_sprite.png',
-      sprite: { position: [600, 700, 0, 180] },
-    }));
-    this.components.push(new TransformComponent({
-      position: [50, 10],
-      size: [3, 5.4],
-    }));
-    this.components.push(new MovementComponent({ speed: 0.05, direction: [0, 1] }));
-    this.components.push(new UpdateSpeedComponent({ delta: 0.01 }));
-    this.components.push(new RotationKeysComponent({
-      left: KeyboardKeys.Left,
-      right: KeyboardKeys.Right,
-    }));
-    this.components.push(new BrainModeComponent({ mode: 'H' }));
   }
 }
 
@@ -280,6 +198,9 @@ export default (game) => {
     const randomY = Math.random() * 65;
     const randomX = Math.random() * 100;
     const minion = new Minion(randomX, randomY);
+    minion.components.push(new MovementLimitComponent({
+      minX: 0, maxX: 100, minY: 0, maxY: 65,
+    }));
     scene.addEntity(minion);
   }
 

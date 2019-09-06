@@ -118,11 +118,22 @@ export class CameraComponent {
 }
 
 class GameWorld {
+  static _nextId = 0;
+
+  static setEntityId(entity) {
+    if (entity.id) return;
+    // eslint-disable-next-line no-underscore-dangle
+    GameWorld._nextId++;
+    // eslint-disable-next-line no-underscore-dangle,no-param-reassign
+    entity.id = GameWorld._nextId;
+  }
+
   constructor(world) {
     this._world = world;
   }
 
   addEntity(entity) {
+    GameWorld.setEntityId(entity);
     this._world.entities.push(entity);
   }
 
@@ -154,6 +165,7 @@ class GameScene {
 
   addEntity(entity, world) {
     const theWorld = world || this._scene.worlds[0];
+    GameWorld.setEntityId(entity);
     theWorld.entities.push(entity);
   }
 

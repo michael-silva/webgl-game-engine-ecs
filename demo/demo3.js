@@ -1,12 +1,13 @@
 import { SpriteAnimation } from '../src/render-system';
 import {
-  MovementComponent, Rectangle, MovementKeysComponent,
+  MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
 import { CameraComponent } from '../src';
 import { Color, RenderUtils, AnimationType } from '../src/utils';
 import { TransformComponent, RenderComponent } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
+import { Rectangle } from './objects';
 
 class ColorUpdateComponent {
   constructor({ color }) {

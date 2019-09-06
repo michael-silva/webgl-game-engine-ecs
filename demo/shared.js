@@ -1,19 +1,6 @@
-import { GameObject } from '../src';
-import { TransformComponent, RenderComponent } from '../src/systems';
+import { TransformComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
 import { TransformUtils } from '../src/utils';
-
-export class Rectangle extends GameObject {
-  constructor({
-    color, texture, sprite, transform,
-  }) {
-    super();
-    this.components = [
-      new RenderComponent({ color, texture, sprite }),
-      new TransformComponent(transform),
-    ];
-  }
-}
 
 export class MovementComponent {
   constructor({ speed, direction }) {

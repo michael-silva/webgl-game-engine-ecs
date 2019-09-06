@@ -1,12 +1,13 @@
 import { TransformComponent } from '../src/systems';
 import {
-  MovementComponent, MovementKeysComponent, Rectangle,
+  MovementComponent, MovementKeysComponent,
   KeyboardMovementSystem, MovementSystem,
 } from './shared';
 import { TransformUtils, Color } from '../src/utils';
 import { CameraComponent } from '../src';
 import { AudioSystem } from '../src/audio-system';
 import { KeyboardKeys } from '../src/input-system';
+import { Rectangle } from './objects';
 
 
 class RotationComponent {
