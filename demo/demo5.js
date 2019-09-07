@@ -2,13 +2,16 @@ import {
   MovementComponent,
   MovementSystem, KeyboardMovementSystem, RotationKeysComponent, KeyboardRotationSystem,
 } from './shared';
-import { CameraComponent, GameObject } from '../src';
-import { TransformUtils, BoundingUtils } from '../src/utils';
+import { GameObject } from '../src';
+import { TransformUtils, BoundingUtils, CameraUtils } from '../src/utils';
 import {
-  TransformComponent, RenderComponent, TextComponent, CameraUtils,
+  TransformComponent, RenderComponent, TextComponent,
 } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 import { Minion, Hero, Brain } from './objects';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+} from '../src/camera';
 
 class MovementLimitComponent {
   constructor({
@@ -144,7 +147,11 @@ class TextTrackBrainModeSystem {
       const targetTransform = target.components.find((c) => c instanceof TransformComponent);
       if (!targetTransform) return;
       // Check for hero going outside 80% of the WC Window bound
-      const camTransform = CameraUtils.getTransform(cameras[0]);
+      const worldCoordinate = cameras[0].componens
+        .find((c) => c instanceof WorldCoordinateComponent);
+      const viewport = cameras[0].componens
+        .find((c) => c instanceof ViewportComponent);
+      const camTransform = CameraUtils.getWcTransform(worldCoordinate, viewport);
       const cameraArea = TransformUtils.resize(camTransform, 0.8);
       const status = BoundingUtils.boundCollideStatus(targetTransform, cameraArea);
       text.content = `[H:keys, J:immediate, K:gradual]: ${brainMode.mode} [Hero bound=${status}]`;
@@ -154,11 +161,15 @@ class TextTrackBrainModeSystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const camera = new CameraComponent({
+  const camera = new CameraEntity();
+  camera.components.push(new WorldCoordinateComponent({
     center: [50, 33],
     width: 100,
-    viewport: [0, 0, 600, 400],
-  });
+  }));
+  camera.components.push(new ViewportComponent({
+    array: [0, 0, 600, 400],
+  }));
+  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([
@@ -181,6 +192,10 @@ export default (game) => {
   scene.addEntity(dyePack);
 
   const brain = new Brain();
+  brain.components.push(new RotationKeysComponent({
+    left: KeyboardKeys.Left,
+    right: KeyboardKeys.Right,
+  }));
   brain.components.push(
     new TextComponent({
       content: 'Status Message',
@@ -198,6 +213,7 @@ export default (game) => {
     const randomY = Math.random() * 65;
     const randomX = Math.random() * 100;
     const minion = new Minion(randomX, randomY);
+    minion.components.push(new MovementComponent({ speed: 0.2, direction: [-1, 0] }));
     minion.components.push(new MovementLimitComponent({
       minX: 0, maxX: 100, minY: 0, maxY: 65,
     }));

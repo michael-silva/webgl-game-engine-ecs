@@ -1,5 +1,9 @@
-import { CameraComponent, GameObject } from '.';
+import { GameObject } from '.';
 import { SoundComponent } from './audio-system';
+import {
+  CameraEntity, WorldCoordinateComponent,
+  ViewportComponent, BackgroundComponent,
+} from './camera';
 
 export class SceneParser {
   _maps = []
@@ -7,9 +11,8 @@ export class SceneParser {
   parse(scene, {
     sound, resources, camera, worlds,
   }) {
-    const { center, width, viewport } = camera;
-    const component = new CameraComponent({ center, width, viewport });
-    scene.addCamera(component);
+    const camEntity = this.parseCamera(camera);
+    scene.addCamera(camEntity);
     scene.setResources(resources);
     if (sound) {
       const { src, play } = sound;
@@ -29,6 +32,19 @@ export class SceneParser {
 
   map(id, component) {
     this._maps[id] = component;
+  }
+
+  parseCamera({ center, width, viewport }) {
+    const camera = new CameraEntity();
+    camera.components.push(new WorldCoordinateComponent({
+      center,
+      width,
+    }));
+    camera.components.push(new ViewportComponent({
+      array: viewport,
+    }));
+    camera.components.push(new BackgroundComponent());
+    return camera;
   }
 
   parseObject(data) {

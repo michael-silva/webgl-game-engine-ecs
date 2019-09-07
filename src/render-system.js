@@ -1,5 +1,7 @@
+import { mat4 } from 'gl-matrix';
 import { RenderUtils, AnimationType } from './utils';
 import { TransformComponent, RenderComponent } from './systems';
+import { WorldCoordinateComponent, ViewportComponent, BackgroundComponent } from './camera';
 
 // @system
 export class PreRenderSystem {
@@ -12,8 +14,56 @@ export class PreRenderSystem {
     const scene = game.scenes[game.currentScene];
     RenderUtils.clearCanvas(gl, this._bgColor);
     scene.cameras.forEach((camera) => {
-      RenderUtils.setupViewProjection(gl, camera);
+      this.setupViewProjection(gl, camera);
     });
+  }
+
+  setupViewProjection(gl, camera) {
+    const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+    const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+    const background = camera.components.find((c) => c instanceof BackgroundComponent);
+    // Step A: Set up and clear the Viewport
+    // Step A1: Set up the viewport: area on canvas to be drawn
+    gl.viewport(...viewport.array);
+    // y position of bottom-left corner
+    // width of the area to be drawn
+    // height of the area to be drawn
+    // Step A2: set up the corresponding scissor area to limit clear area
+    gl.scissor(...viewport.array);
+    // y position of bottom-left corner
+    // width of the area to be drawn
+    // height of the area to be drawn
+    // Step A3: set the color to be clear to black
+    gl.clearColor(...background.color); // set the color to be cleared
+
+    // Step A4: enable and clear the scissor area
+    gl.enable(gl.SCISSOR_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.disable(gl.SCISSOR_TEST);
+
+    // Step B: Set up the View-Projection transform operator
+    // Step B1: define the view matrix
+    mat4.lookAt(camera.viewMatrix,
+      [worldCoordinate.center[0], worldCoordinate.center[1], 10], // WC center
+      [worldCoordinate.center[0], worldCoordinate.center[1], 0], //
+      [0, 1, 0]); // orientation
+    // Step B2: define the projection matrix
+    const halfWCWidth = 0.5 * worldCoordinate.width;
+    const halfWCHeight = halfWCWidth * (viewport.array[3] / viewport.array[2]);
+    // WCHeight = WCWidth * viewportHeight / viewportWidth
+    mat4.ortho(camera.projMatrix,
+      -halfWCWidth,
+      halfWCWidth,
+      // distant to left of WC
+      // distant to right of WC
+      // distant to bottom of WC
+      // distant to top of WC
+      -halfWCHeight,
+      halfWCHeight,
+      viewport.nearPlane, // z-distant to near plane
+      viewport.farPlane); // z-distant to far plane
+    // Step B3: concatnate view and project matrices
+    mat4.multiply(camera.viewProjection, camera.projMatrix, camera.viewMatrix);
   }
 }
 

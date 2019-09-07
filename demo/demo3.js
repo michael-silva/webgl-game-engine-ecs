@@ -3,11 +3,13 @@ import {
   MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
-import { CameraComponent } from '../src';
 import { Color, RenderUtils, AnimationType } from '../src/utils';
 import { TransformComponent, RenderComponent } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+} from '../src/camera';
 
 class ColorUpdateComponent {
   constructor({ color }) {
@@ -86,11 +88,15 @@ class UpdateSpritePositionSystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const camera = new CameraComponent({
+  const camera = new CameraEntity();
+  camera.components.push(new WorldCoordinateComponent({
     center: [20, 60],
     width: 20,
-    viewport: [20, 40, 600, 300],
-  });
+  }));
+  camera.components.push(new ViewportComponent({
+    array: [20, 40, 600, 300],
+  }));
+  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([

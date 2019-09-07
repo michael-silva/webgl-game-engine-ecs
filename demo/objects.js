@@ -1,6 +1,6 @@
 import { GameObject } from '../src';
 import { RenderComponent, TransformComponent } from '../src/systems';
-import { MovementComponent, MovementKeysComponent, RotationKeysComponent } from './shared';
+import { MovementComponent, MovementKeysComponent } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { SpriteAnimation } from '../src/render-system';
 import { AnimationType } from '../src/utils';
@@ -18,7 +18,7 @@ export class Rectangle extends GameObject {
 }
 
 export class Portal extends GameObject {
-  constructor() {
+  constructor(x, y) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -26,16 +26,10 @@ export class Portal extends GameObject {
       texture: './assets/images/minion_sprite.png',
     }));
     this.components.push(new TransformComponent({
-      position: [70, 30],
+      position: [x || 70, y || 30],
       size: [10, 10],
     }));
     this.components.push(new MovementComponent({ speed: 0.3 }));
-    this.components.push(new MovementKeysComponent({
-      right: KeyboardKeys.D,
-      left: KeyboardKeys.A,
-      up: KeyboardKeys.W,
-      down: KeyboardKeys.S,
-    }));
   }
 }
 
@@ -84,7 +78,6 @@ export class Minion extends GameObject {
       position: [x, y],
       size: [12, 9.6],
     }));
-    this.components.push(new MovementComponent({ speed: 0.2, direction: [-1, 0] }));
   }
 }
 
@@ -111,7 +104,7 @@ export class Hero extends GameObject {
 }
 
 export class Brain extends GameObject {
-  constructor() {
+  constructor({ speed = 0.05 } = {}) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -122,10 +115,6 @@ export class Brain extends GameObject {
       position: [50, 10],
       size: [3, 5.4],
     }));
-    this.components.push(new MovementComponent({ speed: 0.05, direction: [0, 1] }));
-    this.components.push(new RotationKeysComponent({
-      left: KeyboardKeys.Left,
-      right: KeyboardKeys.Right,
-    }));
+    this.components.push(new MovementComponent({ speed, direction: [0, 1] }));
   }
 }

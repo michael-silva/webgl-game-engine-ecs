@@ -4,7 +4,9 @@ import {
   KeyboardMovementSystem, MovementSystem,
 } from './shared';
 import { TransformUtils, Color } from '../src/utils';
-import { CameraComponent } from '../src';
+import {
+  WorldCoordinateComponent, CameraEntity, ViewportComponent, BackgroundComponent,
+} from '../src/camera';
 import { AudioSystem } from '../src/audio-system';
 import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
@@ -61,8 +63,9 @@ class KeyboardRotationSystem {
 class MovementPortalSystem {
   run({ entities }, { cameras }) {
     const [camera] = cameras;
-    const MAX_X = camera.center[0] + camera.width / 2;
-    const MIN_X = camera.center[0] - camera.width / 2;
+    const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+    const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
+    const MIN_X = worldCoordinate.center[0] - worldCoordinate.width / 2;
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
       const movement = e.components.find((c) => c instanceof MovementComponent);
@@ -98,11 +101,15 @@ class PulseSystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const camera = new CameraComponent({
+  const camera = new CameraEntity();
+  camera.components.push(new WorldCoordinateComponent({
     center: [20, 60],
     width: 20,
-    viewport: [20, 40, 600, 300],
-  });
+  }));
+  camera.components.push(new ViewportComponent({
+    array: [20, 40, 600, 300],
+  }));
+  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   const blueTransform = new TransformComponent({

@@ -1,10 +1,8 @@
-/* eslint-disable max-classes-per-file */
-import { vec2 } from 'gl-matrix';
 import {
   MovementSystem, KeyboardMovementSystem, KeyboardRotationSystem,
-  MovementComponent, RotationKeysComponent,
+  MovementComponent, RotationKeysComponent, CollisionComponent, CollisionSystem,
 } from './shared';
-import { CameraComponent, GameObject } from '../src';
+import { GameObject } from '../src';
 import {
   BoundingUtils, RenderUtils, TransformUtils,
 } from '../src/utils';
@@ -15,6 +13,9 @@ import {
   Minion, Hero, Brain,
 } from './objects';
 import { KeyboardKeys } from '../src/input-system';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+} from '../src/camera';
 
 class MovementLimitComponent {
   constructor({
@@ -76,92 +77,10 @@ class DyePack extends GameObject {
   }
 }
 
-class CollisionComponent {
-  constructor({ color }) {
-    this.color = color;
-  }
-}
-
 class DyePackTargetComponent {
   constructor({ id }) {
     if (!id) throw new Error('target id is undefined');
     this.id = id;
-  }
-}
-
-class CollisionSystem {
-  run({ entities }, scene, { resourceMap, renderState }) {
-    const { gl } = renderState;
-    const tuples = [];
-    entities.forEach((e) => {
-      const transform = e.components.find((c) => c instanceof TransformComponent);
-      const renderable = e.components.find((c) => c instanceof RenderComponent);
-      const collision = e.components.find((c) => c instanceof CollisionComponent);
-      if (!transform || !collision || !renderable || !renderable.texture
-        || !resourceMap[renderable.texture] || !resourceMap[renderable.texture].loaded) return;
-      collision.pixelTouch = null;
-      tuples.push([transform, renderable, collision]);
-    });
-    tuples.forEach((e, i) => {
-      const [transform, renderable, collision] = e;
-      const textureInfo = resourceMap[renderable.texture].asset;
-      for (let j = i + 1; j < tuples.length; j++) {
-        const [otherTransform, otherRenderable, otherCollision] = tuples[j];
-        const otherTextureInfo = resourceMap[otherRenderable.texture].asset;
-        let pixelTouch = null;
-        if (transform.rotationInRadians === 0 && otherTransform.rotationInRadians === 0) {
-          if (BoundingUtils.intersectsBound(transform, otherTransform)) {
-            pixelTouch = this.getPixelTouch(
-              gl,
-              transform,
-              renderable.sprite,
-              textureInfo,
-              otherTransform,
-              otherTextureInfo,
-              otherRenderable.sprite,
-            );
-          }
-        }
-        else {
-          const { size } = transform;
-          const otherSize = otherTransform.size;
-          const radius = Math.sqrt(0.5 * size[0] * 0.5 * size[0] + 0.5 * size[1] * 0.5 * size[1]);
-          const otherRadius = Math.sqrt(0.5 * otherSize[0] * 0.5 * otherSize[0]
-                                   + 0.5 * otherSize[1] * 0.5 * otherSize[1]);
-          const d = [];
-          vec2.sub(d, transform.position, otherTransform.position);
-          if (vec2.length(d) < (radius + otherRadius)) {
-            pixelTouch = this.getPixelTouch(
-              gl,
-              transform,
-              renderable.sprite,
-              textureInfo,
-              otherTransform,
-              otherTextureInfo,
-              otherRenderable.sprite,
-            );
-          }
-        }
-
-        if (pixelTouch) {
-          collision.pixelTouch = pixelTouch;
-          otherCollision.pixelTouch = pixelTouch;
-        }
-      }
-    });
-  }
-
-  getPixelTouch(gl, transform, sprite, textureInfo, otherTransform, otherTextureInfo, otherSprite) {
-    RenderUtils.readColorArray(gl, textureInfo);
-    RenderUtils.readColorArray(gl, otherTextureInfo);
-    return RenderUtils.pixelTouches(
-      transform,
-      textureInfo,
-      sprite,
-      otherTransform,
-      otherTextureInfo,
-      otherSprite,
-    );
   }
 }
 
@@ -278,11 +197,15 @@ class DyePackCollisionSystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const camera = new CameraComponent({
+  const camera = new CameraEntity();
+  camera.components.push(new WorldCoordinateComponent({
     center: [50, 33],
     width: 100,
-    viewport: [0, 0, 600, 400],
-  });
+  }));
+  camera.components.push(new ViewportComponent({
+    array: [0, 0, 600, 400],
+  }));
+  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([
@@ -295,7 +218,7 @@ export default (game) => {
     const randomY = Math.random() * 65;
     const randomX = Math.random() * 200;
     const minion = new Minion(randomX, randomY);
-    minion.id = i.toString();
+    minion.components.push(new MovementComponent({ speed: 0.2, direction: [-1, 0] }));
     minion.components.push(new MovementLimitComponent({
       minX: 0, maxX: 200, minY: 0, maxY: 65,
     }));
@@ -326,7 +249,6 @@ export default (game) => {
   scene.use(new MovementPortalSystem());
   scene.use(new FollowTargetSystem());
   scene.use(new CollisionSystem());
-  scene.use(new DyePackCollisionSystem());
   scene.use(new CollisionColorSystem());
   scene.use(new DyePackCollisionSystem());
 };

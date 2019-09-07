@@ -3,11 +3,14 @@ import {
   MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
-import { CameraComponent, GameObject } from '../src';
+import { GameObject } from '../src';
 import { Color, RenderUtils, AnimationType } from '../src/utils';
 import { TransformComponent, RenderComponent, TextComponent } from '../src/systems';
 import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+} from '../src/camera';
 
 class ColorUpdateComponent {
   constructor({ color }) {
@@ -313,11 +316,15 @@ const parseWorld1 = (scene) => {
 
 export default (game) => {
   const scene = game.createScene();
-  const camera = new CameraComponent({
+  const camera = new CameraEntity();
+  camera.components.push(new WorldCoordinateComponent({
     center: [50, 33],
     width: 100,
-    viewport: [0, 0, 600, 400],
-  });
+  }));
+  camera.components.push(new ViewportComponent({
+    array: [0, 0, 600, 400],
+  }));
+  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   parseWorld1(scene);

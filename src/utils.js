@@ -45,6 +45,10 @@ export class BoundingUtils {
     }
     return collideStatus;
   }
+
+  static isInside(collideStatus) {
+    return collideStatus && collideStatus.length > 0 && collideStatus.every((s) => s === 1);
+  }
 }
 
 export class TransformUtils {
@@ -213,51 +217,6 @@ export class RenderUtils {
       textureBuffer,
       spriteBuffer,
     };
-  }
-
-  static setupViewProjection(gl, camera) {
-    // Step A: Set up and clear the Viewport
-    // Step A1: Set up the viewport: area on canvas to be drawn
-    gl.viewport(...camera.viewport);
-    // y position of bottom-left corner
-    // width of the area to be drawn
-    // height of the area to be drawn
-    // Step A2: set up the corresponding scissor area to limit clear area
-    gl.scissor(...camera.viewport);
-    // y position of bottom-left corner
-    // width of the area to be drawn
-    // height of the area to be drawn
-    // Step A3: set the color to be clear to black
-    gl.clearColor(...camera.bgColor); // set the color to be cleared
-
-    // Step A4: enable and clear the scissor area
-    gl.enable(gl.SCISSOR_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.disable(gl.SCISSOR_TEST);
-
-    // Step B: Set up the View-Projection transform operator
-    // Step B1: define the view matrix
-    mat4.lookAt(camera.viewMatrix,
-      [camera.center[0], camera.center[1], 10], // WC center
-      [camera.center[0], camera.center[1], 0], //
-      [0, 1, 0]); // orientation
-    // Step B2: define the projection matrix
-    const halfWCWidth = 0.5 * camera.width;
-    const halfWCHeight = halfWCWidth * (camera.viewport[3] / camera.viewport[2]);
-    // WCHeight = WCWidth * viewportHeight / viewportWidth
-    mat4.ortho(camera.projMatrix,
-      -halfWCWidth,
-      halfWCWidth,
-      // distant to left of WC
-      // distant to right of WC
-      // distant to bottom of WC
-      // distant to top of WC
-      -halfWCHeight,
-      halfWCHeight,
-      camera.nearPlane, // z-distant to near plane
-      camera.farPlane); // z-distant to far plane
-    // Step B3: concatnate view and project matrices
-    mat4.multiply(camera.viewProjection, camera.projMatrix, camera.viewMatrix);
   }
 
   static processImage(gl, textureName, image) {
@@ -801,5 +760,44 @@ export class FontUtils {
     // eslint-disable-next-line no-param-reassign
     fontInfo.chars[character] = returnInfo;
     return returnInfo;
+  }
+}
+
+export class CameraUtils {
+  static getWcTransform(worldCoordinate, viewport, zone = 1) {
+    const position = worldCoordinate.center;
+    const height = worldCoordinate.width * (viewport.array[3] / viewport.array[2]);
+    const size = [worldCoordinate.width * zone, height * zone];
+    return {
+      position,
+      size,
+    };
+  }
+
+  static panBy(worldCoordinate, delta) {
+    // eslint-disable-next-line no-param-reassign
+    worldCoordinate.center[0] += delta[0];
+    // eslint-disable-next-line no-param-reassign
+    worldCoordinate.center[1] += delta[1];
+  }
+
+  static panTo(worldCoordinate, center) {
+    // eslint-disable-next-line no-param-reassign
+    worldCoordinate.center = [...center];
+  }
+
+  static zoomBy(worldCoordinate, zoom) {
+    if (zoom > 0) {
+      // eslint-disable-next-line no-param-reassign
+      worldCoordinate.width *= zoom;
+    }
+  }
+
+  static zoomTowards(worldCoordinate, pos, zoom) {
+    const delta = [];
+    vec2.sub(delta, pos, worldCoordinate.center);
+    vec2.scale(delta, delta, zoom - 1);
+    vec2.sub(worldCoordinate.center, worldCoordinate.center, delta);
+    CameraUtils.zoomBy(worldCoordinate, zoom);
   }
 }

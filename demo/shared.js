@@ -1,6 +1,8 @@
-import { TransformComponent } from '../src/systems';
+import { vec2 } from 'gl-matrix';
+import { TransformComponent, RenderComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
-import { TransformUtils } from '../src/utils';
+import { TransformUtils, BoundingUtils, RenderUtils } from '../src/utils';
+import { WorldCoordinateComponent } from '../src/camera';
 
 export class MovementComponent {
   constructor({ speed, direction }) {
@@ -54,8 +56,9 @@ export class KeyboardMovementSystem {
 export class MovementChangeLevelSystem {
   run({ entities }, { cameras, worlds }) {
     const [camera] = cameras;
-    const MAX_X = camera.center[0] + camera.width / 2;
-    const MIN_X = camera.center[0] - camera.width / 2;
+    const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+    const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
+    const MIN_X = worldCoordinate.center[0] - worldCoordinate.width / 2;
     let worldActiveIndex = worlds.findIndex((w) => w.active);
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -112,5 +115,88 @@ export class KeyboardRotationSystem {
         movement.direction = TransformUtils.rotate(movement.direction, -delta);
       }
     });
+  }
+}
+
+
+export class CollisionComponent {
+  constructor({ color }) {
+    this.color = color;
+  }
+}
+
+export class CollisionSystem {
+  run({ entities }, scene, { resourceMap, renderState }) {
+    const { gl } = renderState;
+    const tuples = [];
+    entities.forEach((e) => {
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const renderable = e.components.find((c) => c instanceof RenderComponent);
+      const collision = e.components.find((c) => c instanceof CollisionComponent);
+      if (!transform || !collision || !renderable || !renderable.texture
+        || !resourceMap[renderable.texture] || !resourceMap[renderable.texture].loaded) return;
+      collision.pixelTouch = null;
+      tuples.push([transform, renderable, collision]);
+    });
+    tuples.forEach((e, i) => {
+      const [transform, renderable, collision] = e;
+      const textureInfo = resourceMap[renderable.texture].asset;
+      for (let j = i + 1; j < tuples.length; j++) {
+        const [otherTransform, otherRenderable, otherCollision] = tuples[j];
+        const otherTextureInfo = resourceMap[otherRenderable.texture].asset;
+        let pixelTouch = null;
+        if (transform.rotationInRadians === 0 && otherTransform.rotationInRadians === 0) {
+          if (BoundingUtils.intersectsBound(transform, otherTransform)) {
+            pixelTouch = this.getPixelTouch(
+              gl,
+              transform,
+              renderable.sprite,
+              textureInfo,
+              otherTransform,
+              otherTextureInfo,
+              otherRenderable.sprite,
+            );
+          }
+        }
+        else {
+          const { size } = transform;
+          const otherSize = otherTransform.size;
+          const radius = Math.sqrt(0.5 * size[0] * 0.5 * size[0] + 0.5 * size[1] * 0.5 * size[1]);
+          const otherRadius = Math.sqrt(0.5 * otherSize[0] * 0.5 * otherSize[0]
+                                   + 0.5 * otherSize[1] * 0.5 * otherSize[1]);
+          const d = [];
+          vec2.sub(d, transform.position, otherTransform.position);
+          if (vec2.length(d) < (radius + otherRadius)) {
+            pixelTouch = this.getPixelTouch(
+              gl,
+              transform,
+              renderable.sprite,
+              textureInfo,
+              otherTransform,
+              otherTextureInfo,
+              otherRenderable.sprite,
+            );
+          }
+        }
+
+        if (pixelTouch) {
+          collision.pixelTouch = pixelTouch;
+          otherCollision.pixelTouch = pixelTouch;
+        }
+      }
+    });
+  }
+
+  getPixelTouch(gl, transform, sprite, textureInfo, otherTransform, otherTextureInfo, otherSprite) {
+    RenderUtils.readColorArray(gl, textureInfo);
+    RenderUtils.readColorArray(gl, otherTextureInfo);
+    return RenderUtils.pixelTouches(
+      transform,
+      textureInfo,
+      sprite,
+      otherTransform,
+      otherTextureInfo,
+      otherSprite,
+    );
   }
 }
