@@ -17,7 +17,7 @@ import {
 } from './objects';
 import { KeyboardKeys } from '../src/input-system';
 import {
-  BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
+  BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity, BackgroundTypes,
 } from '../src/camera';
 
 class WorldCoordinateInterpolation {
@@ -382,13 +382,17 @@ export default (game) => {
     shakeKey: KeyboardKeys.Space,
   }));
   camera.components.push(new BackgroundComponent({
+    // type: BackgroundTypes.Fixed,
+    color: [0.8, 0.8, 0.8, 0],
     size: [150, 150],
-    position: [150, 150],
+    position: [50, 35],
+    // position: [0, 0],
     texture: './assets/images/bg.png',
   }));
   scene.addCamera(camera);
 
   scene.setResources([
+    './assets/images/bg.png',
     './assets/images/minion_sprite.png',
     './assets/fonts/system-default-font.fnt',
   ]);

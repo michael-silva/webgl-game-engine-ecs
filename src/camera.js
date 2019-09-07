@@ -1,9 +1,15 @@
 import { mat4 } from 'gl-matrix';
 
+export const BackgroundTypes = Object.freeze({
+  Fixed: 'static',
+  Normal: 'normal',
+});
+
 export class BackgroundComponent {
   constructor({
-    texture, position, size, color,
+    type, texture, position, size, color,
   } = {}) {
+    this.type = type || BackgroundTypes.Normal;
     this.texture = texture;
     this.position = position;
     this.size = size;

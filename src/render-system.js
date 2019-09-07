@@ -1,20 +1,34 @@
 import { mat4 } from 'gl-matrix';
 import { RenderUtils, AnimationType } from './utils';
 import { TransformComponent, RenderComponent } from './systems';
-import { WorldCoordinateComponent, ViewportComponent, BackgroundComponent } from './camera';
+import {
+  WorldCoordinateComponent, ViewportComponent, BackgroundComponent, BackgroundTypes,
+} from './camera';
 
 // @system
 export class PreRenderSystem {
-  constructor(bgColor = [0.0, 0.8, 0.0, 1.0]) {
-    this._bgColor = bgColor;
-  }
-
   run(game) {
     const { gl } = game.renderState;
     const scene = game.scenes[game.currentScene];
-    RenderUtils.clearCanvas(gl, this._bgColor);
+    // RenderUtils.clearCanvas(gl, this._bgColor);
     scene.cameras.forEach((camera) => {
       this.setupViewProjection(gl, camera);
+      const background = camera.components.find((c) => c instanceof BackgroundComponent);
+      const { texture, type } = background;
+      if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      let { position } = background;
+      if (type === BackgroundTypes.Fixed) {
+        position = [
+          position[0] + worldCoordinate.center[0],
+          position[1] + worldCoordinate.center[1],
+        ];
+      }
+      const transform = {
+        size: background.size,
+        position,
+      };
+      RenderUtils.renderEntity(game, background, transform);
     });
   }
 
@@ -22,6 +36,7 @@ export class PreRenderSystem {
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const viewport = camera.components.find((c) => c instanceof ViewportComponent);
     const background = camera.components.find((c) => c instanceof BackgroundComponent);
+
     // Step A: Set up and clear the Viewport
     // Step A1: Set up the viewport: area on canvas to be drawn
     gl.viewport(...viewport.array);
@@ -98,10 +113,6 @@ export class SpriteAnimation {
 
 // @system
 export class RenderSystem {
-  constructor(bgColor = [0.0, 0.8, 0.0, 1.0]) {
-    this._bgColor = bgColor;
-  }
-
   run(game) {
     const { resourceMap } = game;
     const { shaders } = game.renderState;
