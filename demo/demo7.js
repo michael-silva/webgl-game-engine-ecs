@@ -17,7 +17,7 @@ import {
 } from './objects';
 import { KeyboardKeys } from '../src/input-system';
 import {
-  BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity, BackgroundTypes,
+  BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
 
 class WorldCoordinateInterpolation {
@@ -212,7 +212,7 @@ class CameraShakeComponent extends ShakePositionComponent {
 }
 
 
-class FocusAtComponent {
+class FocusAtKeysComponent {
   constructor({ options }) {
     this.options = options;
   }
@@ -241,7 +241,7 @@ class CameraControlSystem {
       const wcInterpolation = camera.components
         .find((c) => c instanceof WorldCoordinateInterpolation);
       const focused = camera.components.find((c) => c instanceof CameraFocusComponent);
-      const focusAt = camera.components.find((c) => c instanceof FocusAtComponent);
+      const focusAt = camera.components.find((c) => c instanceof FocusAtKeysComponent);
       if (!worldCoordinate || !wcInterpolation || !focusAt || !focused) return;
 
       if (focused.id) {
@@ -286,6 +286,26 @@ class CameraControlSystem {
           wcInterpolation.center.nextValue = transform.position;
         }
       });
+    });
+  }
+}
+
+class FocusAtComponent {
+  constructor({ entityId }) {
+    this.entityId = entityId;
+  }
+}
+
+class CameraFollowSystem {
+  run({ entities }, { cameras }) {
+    cameras.forEach((camera) => {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const focusAt = camera.components.find((c) => c instanceof FocusAtComponent);
+      if (!worldCoordinate || !focusAt) return;
+
+      const entity = entities.find((e) => e.id === focusAt.entityId);
+      const transform = entity.components.find((c) => c instanceof TransformComponent);
+      worldCoordinate.center = [...transform.position];
     });
   }
 }
@@ -356,6 +376,14 @@ class CameraShakeSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const cameraBackground = new BackgroundComponent({
+    // type: BackgroundTypes.Fixed,
+    color: [0.8, 0.8, 0.8, 0],
+    size: [150, 150],
+    position: [50, 35],
+    // position: [0, 0],
+    texture: './assets/images/bg.png',
+  });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 37.5],
@@ -381,15 +409,30 @@ export default (game) => {
     zoomTowardOutKey: KeyboardKeys.K,
     shakeKey: KeyboardKeys.Space,
   }));
-  camera.components.push(new BackgroundComponent({
-    // type: BackgroundTypes.Fixed,
-    color: [0.8, 0.8, 0.8, 0],
-    size: [150, 150],
-    position: [50, 35],
-    // position: [0, 0],
-    texture: './assets/images/bg.png',
-  }));
+  camera.components.push(cameraBackground);
   scene.addCamera(camera);
+  const camHero = new CameraEntity();
+  camHero.components.push(new WorldCoordinateComponent({
+    center: [50, 30],
+    width: 20,
+  }));
+  camHero.components.push(new ViewportComponent({
+    array: [490, 330, 150, 150],
+    bound: 2,
+  }));
+  camHero.components.push(cameraBackground);
+  scene.addCamera(camHero);
+  const camBrain = new CameraEntity();
+  camBrain.components.push(new WorldCoordinateComponent({
+    center: [50, 30],
+    width: 10,
+  }));
+  camBrain.components.push(new ViewportComponent({
+    array: [0, 330, 150, 150],
+    bound: 2,
+  }));
+  camBrain.components.push(cameraBackground);
+  scene.addCamera(camBrain);
 
   scene.setResources([
     './assets/images/bg.png',
@@ -425,7 +468,7 @@ export default (game) => {
   brain.components.push(new TargetComponent({ id: hero.id }));
   scene.addEntity(brain);
 
-  camera.components.push(new FocusAtComponent({
+  camera.components.push(new FocusAtKeysComponent({
     options: [{
       entityId: minionLeft.id,
       key: KeyboardKeys.Z,
@@ -444,6 +487,14 @@ export default (game) => {
     }],
   }));
 
+  camHero.components.push(new FocusAtComponent({
+    entityId: hero.id,
+  }));
+
+  camBrain.components.push(new FocusAtComponent({
+    entityId: brain.id,
+  }));
+
   scene.use(new InterpolationSystem());
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
@@ -453,4 +504,5 @@ export default (game) => {
   scene.use(new CameraBoundarySystem());
   scene.use(new CameraPanSystem());
   scene.use(new CameraShakeSystem());
+  scene.use(new CameraFollowSystem());
 };

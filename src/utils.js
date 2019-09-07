@@ -308,30 +308,27 @@ export class RenderUtils {
     ];
   }
 
-  static renderEntity(game, renderable, transform) {
+  static renderEntity(game, camera, renderable, transform) {
     const { resourceMap } = game;
     const { gl, buffers, shaders } = game.renderState;
-    const scene = game.scenes[game.currentScene];
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
     const { color, texture, sprite } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
     const shader = textureAsset ? shaders.textureShader : shaders.simpleShader;
 
-    scene.cameras.forEach((camera) => {
-      if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
-      RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
-      if (textureAsset) {
-        if (sprite) {
-          const { position, animation } = sprite;
-          if (animation) RenderUtils.updateAnimation(sprite);
-          const pixelPosition = RenderUtils.fromPixelPositions(textureAsset, position);
-          const texCoordinate = RenderUtils.getElementUVCoordinateArray(pixelPosition);
-          RenderUtils.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
-          RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
-        }
-        else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+    if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
+    RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
+    if (textureAsset) {
+      if (sprite) {
+        const { position, animation } = sprite;
+        if (animation) RenderUtils.updateAnimation(sprite);
+        const pixelPosition = RenderUtils.fromPixelPositions(textureAsset, position);
+        const texCoordinate = RenderUtils.getElementUVCoordinateArray(pixelPosition);
+        RenderUtils.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
+        RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
       }
-    });
+      else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+    }
 
     const xform = TransformUtils.getXForm(transform);
     gl.uniformMatrix4fv(shader.modelTransform, false, xform);

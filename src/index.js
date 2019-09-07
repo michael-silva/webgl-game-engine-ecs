@@ -6,7 +6,7 @@ import {
   GameLoopSystem, LoaderSystem,
   TextSystem, GarbageCollectorSystem,
 } from './systems';
-import { RenderSystem, PreRenderSystem } from './render-system';
+import { RenderSystem } from './render-system';
 import { InputSystem } from './input-system';
 
 // @component
@@ -182,7 +182,7 @@ class GameScene {
 
 // @orchestrator
 export class GameEngine {
-  constructor(canvas, { bgColor }) {
+  constructor(canvas) {
     this._game = new GameEntity();
     const gl = RenderUtils.getGL(canvas);
     const vertexBuffer = RenderUtils.initBuffers(gl);
@@ -195,7 +195,6 @@ export class GameEngine {
     this._loop = new GameLoopSystem();
     this.useBefore(new LoaderSystem());
     this.useBefore(new InputSystem(canvas));
-    this.useAfter(new PreRenderSystem(bgColor));
     this.useAfter(new RenderSystem());
     this.useAfter(new TextSystem());
     this.useAfter(new GarbageCollectorSystem());
