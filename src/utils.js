@@ -775,29 +775,29 @@ export class CameraUtils {
   }
 
   static panBy(worldCoordinate, delta) {
-    // eslint-disable-next-line no-param-reassign
-    worldCoordinate.center[0] += delta[0];
-    // eslint-disable-next-line no-param-reassign
-    worldCoordinate.center[1] += delta[1];
-  }
-
-  static panTo(worldCoordinate, center) {
-    // eslint-disable-next-line no-param-reassign
-    worldCoordinate.center = [...center];
+    return [
+      worldCoordinate.center[0] + delta[0],
+      worldCoordinate.center[1] + delta[1],
+    ];
   }
 
   static zoomBy(worldCoordinate, zoom) {
     if (zoom > 0) {
-      // eslint-disable-next-line no-param-reassign
-      worldCoordinate.width *= zoom;
+      return worldCoordinate.width * zoom;
     }
+    return worldCoordinate.width;
   }
 
   static zoomTowards(worldCoordinate, pos, zoom) {
     const delta = [];
-    vec2.sub(delta, pos, worldCoordinate.center);
+    const center = [...worldCoordinate.center];
+    vec2.sub(delta, pos, center);
     vec2.scale(delta, delta, zoom - 1);
-    vec2.sub(worldCoordinate.center, worldCoordinate.center, delta);
-    CameraUtils.zoomBy(worldCoordinate, zoom);
+    vec2.sub(center, center, delta);
+    const width = CameraUtils.zoomBy(worldCoordinate, zoom);
+    return {
+      center,
+      width,
+    };
   }
 }

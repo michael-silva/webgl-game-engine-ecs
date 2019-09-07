@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import { vec2 } from 'gl-matrix';
 import { TransformComponent, RenderComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
@@ -198,5 +199,53 @@ export class CollisionSystem {
       otherTextureInfo,
       otherSprite,
     );
+  }
+}
+
+export class Interpolation {
+  get value() { return this._value; }
+
+  set value(v) {
+    this._value = v;
+    this._finalValue = v;
+    this._cyclesLeft = 0;
+  }
+
+  get nextValue() { return this._finalValue; }
+
+  set nextValue(v) {
+    this._finalValue = v;
+    this._cyclesLeft = this._cycles;
+  }
+
+  constructor({ value, cycles, rate }) {
+    this.value = value;
+    this._cycles = cycles;
+    this._rate = rate;
+  }
+
+  update() {
+    if (this._cyclesLeft <= 0) return;
+    this._cyclesLeft--;
+    if (this._cyclesLeft === 0) this._value = this._finalValue;
+    else this._interpolateValue();
+  }
+
+  _interpolateValue() {
+    this._value += this._rate * (this._finalValue - this._value);
+  }
+}
+
+export class InterpolationArray extends Interpolation {
+  update() {
+    if (this._cyclesLeft <= 0) return;
+    this._cyclesLeft--;
+    if (this._cyclesLeft === 0) this._value = this._finalValue;
+    else this._interpolateValue();
+  }
+
+  _interpolateValue() {
+    this._value = this._value
+      .map((v, i) => this._value[i] + (this._rate * (this._finalValue[i] - this._value[i])));
   }
 }

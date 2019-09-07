@@ -1,6 +1,9 @@
+/* eslint-disable max-classes-per-file */
+
 import {
   MovementSystem, KeyboardMovementSystem, KeyboardRotationSystem,
   MovementComponent, RotationKeysComponent, MovementKeysComponent,
+  Interpolation, InterpolationArray,
 } from './shared';
 import {
   BoundingUtils, RenderUtils, TransformUtils, CameraUtils,
@@ -16,6 +19,11 @@ import {
   BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
 
+class WorldCoordinateInterpolation {
+  constructor(props) {
+    Object.assign(this, props);
+  }
+}
 
 class TargetComponent {
   constructor({ id }) {
@@ -146,8 +154,10 @@ class CameraPanSystem {
   run({ entities }, { cameras }) {
     cameras.forEach((camera, i) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const wcInterpolation = camera.components
+        .find((c) => c instanceof WorldCoordinateInterpolation);
       const viewport = camera.components.find((c) => c instanceof ViewportComponent);
-      if (!worldCoordinate || !viewport) return;
+      if (!worldCoordinate || !wcInterpolation || !viewport) return;
       entities.forEach((e) => {
         const transform = e.components.find((c) => c instanceof TransformComponent);
         const pan = e.components.find((c) => c instanceof CameraPanComponent);
@@ -156,25 +166,25 @@ class CameraPanSystem {
         const wcTransform = CameraUtils.getWcTransform(worldCoordinate, viewport, zone);
         const collideStatus = BoundingUtils.boundCollideStatus(wcTransform, transform);
         if (!BoundingUtils.isInside(collideStatus)) {
-          const center = [...wcTransform.position];
+          const newCenter = [...wcTransform.position];
           const [collideLeft, collideRight, collideBottom, collideTop] = collideStatus;
           if (collideTop !== 0) {
-            center[1] = transform.position[1]
+            newCenter[1] = transform.position[1]
               - (wcTransform.size[1] / 2) + (transform.size[1] / 2);
           }
           if (collideBottom !== 0) {
-            center[1] = transform.position[1]
+            newCenter[1] = transform.position[1]
               + (wcTransform.size[1] / 2) - (transform.size[1] / 2);
           }
           if (collideRight !== 0) {
-            center[0] = transform.position[0]
+            newCenter[0] = transform.position[0]
               - (wcTransform.size[0] / 2) + (transform.size[0] / 2);
           }
           if (collideLeft !== 0) {
-            center[0] = transform.position[0]
+            newCenter[0] = transform.position[0]
               + (wcTransform.size[0] / 2) - (transform.size[0] / 2);
           }
-          CameraUtils.panTo(worldCoordinate, center);
+          wcInterpolation.center.value = newCenter;
         }
       });
     });
@@ -204,25 +214,36 @@ class CameraControlSystem {
   run({ entities }, { cameras }, { keyboard }) {
     cameras.forEach((camera) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const wcInterpolation = camera.components
+        .find((c) => c instanceof WorldCoordinateInterpolation);
       const focused = camera.components.find((c) => c instanceof CameraFocusComponent);
       const focusAt = camera.components.find((c) => c instanceof FocusAtComponent);
-      if (!worldCoordinate || !focusAt || !focused) return;
+      if (!worldCoordinate || !wcInterpolation || !focusAt || !focused) return;
 
       if (focused.id) {
         const focusEntity = entities.find((e) => e.id === focused.id);
         const focusTransform = focusEntity.components.find((c) => c instanceof TransformComponent);
-        if (keyboard.clickedKeys[focused.zoomOutKey]) {
-          camera.zoomBy(1 - focused.zoomDelta);
-        }
-        if (keyboard.clickedKeys[focused.zoomInKey]) {
-          camera.zoomBy(1 + focused.zoomDelta);
-        }
         if (keyboard.clickedKeys[focused.zoomTowardOutKey]) {
-          camera.zoomTowards(focusTransform.position, 1 - focused.zoomDelta);
+          const newWc = CameraUtils.zoomTowards(worldCoordinate,
+            focusTransform.position, 1 - focused.zoomDelta);
+          wcInterpolation.width.nextValue = newWc.width;
+          wcInterpolation.center.nextValue = newWc.center;
         }
         if (keyboard.clickedKeys[focused.zoomTowardInKey]) {
-          camera.zoomTowards(focusTransform.position, 1 + focused.zoomDelta);
+          const newWc = CameraUtils.zoomTowards(worldCoordinate,
+            focusTransform.position, 1 + focused.zoomDelta);
+          wcInterpolation.width.nextValue = newWc.width;
+          wcInterpolation.center.nextValue = newWc.center;
         }
+      }
+
+      if (keyboard.clickedKeys[focused.zoomOutKey]) {
+        const wcWidth = CameraUtils.zoomBy(worldCoordinate, 1 - focused.zoomDelta);
+        wcInterpolation.width.nextValue = wcWidth;
+      }
+      if (keyboard.clickedKeys[focused.zoomInKey]) {
+        const wcWidth = CameraUtils.zoomBy(worldCoordinate, 1 + focused.zoomDelta);
+        wcInterpolation.width.nextValue = wcWidth;
       }
 
       focusAt.options.forEach((option) => {
@@ -230,9 +251,24 @@ class CameraControlSystem {
           focused.id = option.entityId;
           const entity = entities.find((e) => e.id === focused.id);
           const transform = entity.components.find((c) => c instanceof TransformComponent);
-          CameraUtils.panTo(worldCoordinate, transform.position);
+          wcInterpolation.center.nextValue = transform.position;
         }
       });
+    });
+  }
+}
+
+class InterpolationSystem {
+  run(world, { cameras }) {
+    cameras.forEach((camera) => {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const wcInterpolation = camera.components
+        .find((c) => c instanceof WorldCoordinateInterpolation);
+      if (!worldCoordinate || !wcInterpolation) return;
+      wcInterpolation.center.update();
+      wcInterpolation.width.update();
+      worldCoordinate.center = wcInterpolation.center.value;
+      worldCoordinate.width = wcInterpolation.width.value;
     });
   }
 }
@@ -243,6 +279,10 @@ export default (game) => {
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 37.5],
     width: 100,
+  }));
+  camera.components.push(new WorldCoordinateInterpolation({
+    center: new InterpolationArray({ value: [50, 37.5], cycles: 300, rate: 0.1 }),
+    width: new Interpolation({ value: 100, cycles: 300, rate: 0.1 }),
   }));
   camera.components.push(new ViewportComponent({
     array: [0, 0, 640, 480],
@@ -313,6 +353,7 @@ export default (game) => {
     }],
   }));
 
+  scene.use(new InterpolationSystem());
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
   scene.use(new MovementSystem());
