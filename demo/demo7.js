@@ -1,5 +1,6 @@
 /* eslint-disable max-classes-per-file */
 
+import { vec2 } from 'gl-matrix';
 import {
   MovementSystem, KeyboardMovementSystem, KeyboardRotationSystem,
   MovementComponent, RotationKeysComponent, MovementKeysComponent,
@@ -191,6 +192,26 @@ class CameraPanSystem {
   }
 }
 
+class ShakePositionComponent {
+  constructor({ delta, frequency, duration }) {
+    this.mag = [...delta];
+    this.cycles = duration; // number of cycles to complete the transition
+    this.omega = frequency * 2 * Math.PI; // Converts frequency to radians
+    this.cyclesLeft = duration;
+  }
+}
+
+class CameraShakeComponent extends ShakePositionComponent {
+  constructor({
+    refCenter = [], delta, frequency, duration,
+  }) {
+    super({ delta, frequency, duration });
+    this.refCenter = refCenter;
+    this.shakeCenter = [...refCenter];
+  }
+}
+
+
 class FocusAtComponent {
   constructor({ options }) {
     this.options = options;
@@ -199,7 +220,8 @@ class FocusAtComponent {
 
 class CameraFocusComponent {
   constructor({
-    id, zoomDelta, zoomOutKey, zoomInKey, zoomTowardOutKey, zoomTowardInKey,
+    id, zoomDelta, zoomOutKey, zoomInKey,
+    zoomTowardOutKey, zoomTowardInKey, shakeKey,
   }) {
     this.id = id;
     this.zoomDelta = zoomDelta;
@@ -207,12 +229,14 @@ class CameraFocusComponent {
     this.zoomInKey = zoomInKey;
     this.zoomTowardOutKey = zoomTowardOutKey;
     this.zoomTowardInKey = zoomTowardInKey;
+    this.shakeKey = shakeKey;
   }
 }
 
 class CameraControlSystem {
   run({ entities }, { cameras }, { keyboard }) {
     cameras.forEach((camera) => {
+      const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const wcInterpolation = camera.components
         .find((c) => c instanceof WorldCoordinateInterpolation);
@@ -245,6 +269,14 @@ class CameraControlSystem {
         const wcWidth = CameraUtils.zoomBy(worldCoordinate, 1 + focused.zoomDelta);
         wcInterpolation.width.nextValue = wcWidth;
       }
+      if (keyboard.clickedKeys[focused.zoomInKey]) {
+        const wcWidth = CameraUtils.zoomBy(worldCoordinate, 1 + focused.zoomDelta);
+        wcInterpolation.width.nextValue = wcWidth;
+      }
+      if (keyboard.clickedKeys[focused.shakeKey]) {
+        shake.refCenter = [...worldCoordinate.center];
+        shake.active = true;
+      }
 
       focusAt.options.forEach((option) => {
         if (keyboard.clickedKeys[option.key]) {
@@ -273,6 +305,55 @@ class InterpolationSystem {
   }
 }
 
+class ShakeUtils {
+  _nextDampedHarmonic(shake) {
+    // computes (Cycles) * cos(  Omega * t )
+    const frac = shake.cyclesLeft / shake.cycles;
+    return frac * frac * Math.cos((1 - frac) * shake.omega);
+  }
+
+  isShakeDone(shake) {
+    return (shake.cyclesLeft <= 0);
+  }
+
+  getShakeResults(shake) {
+    // eslint-disable-next-line no-param-reassign
+    shake.cyclesLeft--;
+    let fx = 0;
+    let fy = 0;
+    if (!this.isShakeDone(shake)) {
+      const v = this._nextDampedHarmonic(shake);
+      fx = (Math.random() > 0.5) ? -v : v;
+      fy = (Math.random() > 0.5) ? -v : v;
+    }
+    return [
+      shake.mag[0] * fx,
+      shake.mag[1] * fy,
+    ];
+  }
+}
+
+class CameraShakeSystem {
+  constructor() {
+    this._utils = new ShakeUtils();
+  }
+
+  run(world, { cameras }) {
+    cameras.forEach((camera) => {
+      const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      if (!shake || !shake.active || !worldCoordinate) return;
+      const results = this._utils.getShakeResults(shake);
+      vec2.add(shake.shakeCenter, shake.refCenter, results);
+      worldCoordinate.center = shake.shakeCenter;
+      if (this._utils.isShakeDone(shake)) {
+        shake.cyclesLeft = shake.cycles;
+        shake.active = false;
+      }
+    });
+  }
+}
+
 export default (game) => {
   const scene = game.createScene();
   const camera = new CameraEntity();
@@ -287,12 +368,18 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 640, 480],
   }));
+  camera.components.push(new CameraShakeComponent({
+    delta: [-2, -2],
+    duration: 20,
+    frequency: 30,
+  }));
   camera.components.push(new CameraFocusComponent({
     zoomDelta: 0.1,
     zoomInKey: KeyboardKeys.M,
     zoomOutKey: KeyboardKeys.N,
     zoomTowardInKey: KeyboardKeys.J,
     zoomTowardOutKey: KeyboardKeys.K,
+    shakeKey: KeyboardKeys.Space,
   }));
   camera.components.push(new BackgroundComponent({
     size: [150, 150],
@@ -361,4 +448,5 @@ export default (game) => {
   scene.use(new CameraControlSystem());
   scene.use(new CameraBoundarySystem());
   scene.use(new CameraPanSystem());
+  scene.use(new CameraShakeSystem());
 };
