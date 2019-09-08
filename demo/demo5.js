@@ -81,7 +81,8 @@ class BrainTargetComponent {
 }
 
 class BrainModeSystem {
-  run({ entities }, scene, { keyboard }) {
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
     entities.forEach((e) => {
       const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
       const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -136,7 +137,8 @@ class BrainModeSystem {
 }
 
 class TextTrackBrainModeSystem {
-  run({ entities }, { cameras }) {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       const brainMode = e.components.find((c) => c instanceof BrainModeComponent);

@@ -110,7 +110,7 @@ class TargetComponent {
 }
 
 class FollowTargetSystem {
-  run({ entities }, scene, { renderState, resourceMap }) {
+  run({ entities }, { renderState, resourceMap }) {
     const { gl } = renderState;
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);

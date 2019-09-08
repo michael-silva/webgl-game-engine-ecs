@@ -74,7 +74,8 @@ class ResizeKeysComponent {
 }
 
 class KeyboardUpdateSizeSystem {
-  run({ entities }, scene, { keyboard }) {
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
     entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       const resizeKeys = e.components.find((c) => c instanceof ResizeKeysComponent);
@@ -115,7 +116,7 @@ class SpritePositionDeltaComponent {
 }
 
 class UpdateSpritePositionSystem {
-  run({ entities }, scene, { resourceMap }) {
+  run({ entities }, { resourceMap }) {
     entities.forEach((e) => {
       const renderable = e.components.find((c) => c instanceof RenderComponent);
       const deltaPosition = e.components.find((c) => c instanceof SpritePositionDeltaComponent);

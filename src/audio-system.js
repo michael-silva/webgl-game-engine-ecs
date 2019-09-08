@@ -34,7 +34,7 @@ export class AudioSystem {
     this._audioContext = new AudioContext();
   }
 
-  run({ entities }, scene, { resourceMap }) {
+  run({ entities }, { resourceMap }) {
     entities.forEach((e) => {
       const audio = e.components.find((c) => c instanceof AudioComponent);
       if (!audio || !resourceMap[audio.src] || !resourceMap[audio.src].loaded) return;

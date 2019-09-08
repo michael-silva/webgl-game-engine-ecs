@@ -40,7 +40,8 @@ export class MovementSystem {
 }
 
 export class KeyboardMovementSystem {
-  run({ entities }, scene, { keyboard }) {
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
     entities.forEach((e) => {
       const movement = e.components.find((c) => c instanceof MovementComponent);
       const movementKeys = e.components.find((c) => c instanceof MovementKeysComponent);
@@ -55,7 +56,8 @@ export class KeyboardMovementSystem {
 }
 
 export class MovementChangeLevelSystem {
-  run({ entities }, { cameras, worlds }) {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras, worlds } = scenes[currentScene];
     const [camera] = cameras;
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
@@ -100,7 +102,8 @@ export class RotationKeysComponent {
 }
 
 export class KeyboardRotationSystem {
-  run({ entities }, scene, { keyboard }) {
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
     entities.forEach((e) => {
       const rotationKeys = e.components.find((c) => c instanceof RotationKeysComponent);
       const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -127,7 +130,7 @@ export class CollisionComponent {
 }
 
 export class CollisionSystem {
-  run({ entities }, scene, { resourceMap, renderState }) {
+  run({ entities }, { resourceMap, renderState }) {
     const { gl } = renderState;
     const tuples = [];
     entities.forEach((e) => {

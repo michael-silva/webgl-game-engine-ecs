@@ -50,12 +50,13 @@ export class GameLoopSystem {
         loopState.isLoopRunning = false;
       }
       while (loopState.lagTime >= MPF && loopState.isLoopRunning) {
+        game.inputEngine.run(game);
         game.preSystems.forEach((s) => s.run(game));
         loopState.lagTime -= MPF;
         const scene = game.scenes[game.currentScene];
         scene.worlds.forEach((world) => {
           if (!world.active) return;
-          scene.systems.forEach((s) => s.run(world, scene, game));
+          scene.systems.forEach((s) => s.run(world, game));
         });
         game.posSystems.forEach((s) => s.run(game));
         game.renderEngine.run(game);

@@ -15,7 +15,7 @@ import {
 import {
   Minion, Hero, Brain, Portal,
 } from './objects';
-import { KeyboardKeys } from '../src/input-system';
+import { KeyboardKeys, MouseButton } from '../src/input-system';
 import {
   BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
@@ -35,7 +35,7 @@ class TargetComponent {
 }
 
 class FollowTargetSystem {
-  run({ entities }, scene, { renderState, resourceMap }) {
+  run({ entities }, { renderState, resourceMap }) {
     const { gl } = renderState;
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -107,7 +107,8 @@ class ClampAtBoundaryComponent {
 }
 
 class CameraBoundarySystem {
-  run({ entities }, { cameras }) {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     cameras.forEach((camera, i) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const viewport = camera.components.find((c) => c instanceof ViewportComponent);
@@ -153,7 +154,8 @@ class CameraPanComponent {
 }
 
 class CameraPanSystem {
-  run({ entities }, { cameras }) {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     cameras.forEach((camera, i) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const wcInterpolation = camera.components
@@ -235,7 +237,9 @@ class CameraFocusComponent {
 }
 
 class CameraControlSystem {
-  run({ entities }, { cameras }, { keyboard }) {
+  run({ entities }, { inputState, scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
+    const { keyboard } = inputState;
     cameras.forEach((camera) => {
       const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -298,7 +302,8 @@ class FocusAtComponent {
 }
 
 class CameraFollowSystem {
-  run({ entities }, { cameras }) {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     cameras.forEach((camera) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const focusAt = camera.components.find((c) => c instanceof FocusAtComponent);
@@ -312,7 +317,8 @@ class CameraFollowSystem {
 }
 
 class InterpolationSystem {
-  run(world, { cameras }) {
+  run(world, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     cameras.forEach((camera) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const wcInterpolation = camera.components
@@ -359,7 +365,8 @@ class CameraShakeSystem {
     this._utils = new ShakeUtils();
   }
 
-  run(world, { cameras }) {
+  run(world, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
     cameras.forEach((camera) => {
       const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -376,11 +383,51 @@ class CameraShakeSystem {
 }
 
 class TrackMousePositionSystem {
-  run({ entities }, scene, { mouse }) {
+  run({ entities }, { inputState }) {
+    const { mouse } = inputState;
     entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       if (!text) return;
-      text.content = `X=${mouse.mousePosX},Y=${mouse.mousePosY}`;
+      let status = '';
+      if (mouse.pressedButtons[MouseButton.Left]) status = '[Left]';
+      else if (mouse.pressedButtons[MouseButton.Right]) status = '[Right]';
+      else if (mouse.pressedButtons[MouseButton.Middle]) status = '[Middle]';
+      text.content = `X=${mouse.mousePosX},Y=${mouse.mousePosY} ${status}`;
+    });
+  }
+}
+
+class MoveOnMouseComponent {
+  constructor({ entityId, mouseKey, type }) {
+    this.entityId = entityId;
+    this.mouseKey = mouseKey;
+    this.type = type;
+  }
+}
+
+class MouseMoveEntitySystem {
+  run({ entities }, { scenes, currentScene, inputState }) {
+    const { mouse } = inputState;
+    const { cameras } = scenes[currentScene];
+    cameras.forEach((camera) => {
+      const moveOn = camera.components.find((c) => c instanceof MoveOnMouseComponent);
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+      if (!moveOn || !viewport || !worldCoordinate) return;
+      if (!CameraUtils.isMouseInViewport(viewport.array, mouse)) return;
+      const entity = entities.find((e) => e.id === moveOn.entityId);
+      if (!entity) return;
+      const transform = entity.components.find((c) => c instanceof TransformComponent);
+      if (moveOn.type === 'pressed' && mouse.pressedButtons[moveOn.mouseKey]) {
+        transform.position = CameraUtils.getMouseWorldCoordinate(
+          viewport.array, worldCoordinate, mouse,
+        );
+      }
+      else if (moveOn.type === 'clicked' && mouse.clickedButtons[moveOn.mouseKey]) {
+        transform.position = CameraUtils.getMouseWorldCoordinate(
+          viewport.array, worldCoordinate, mouse,
+        );
+      }
     });
   }
 }
@@ -405,7 +452,7 @@ export default (game) => {
     width: new Interpolation({ value: 100, cycles: 300, rate: 0.1 }),
   }));
   camera.components.push(new ViewportComponent({
-    array: [0, 0, 640, 480],
+    array: [0, 0, 640, 330],
   }));
   camera.components.push(new CameraShakeComponent({
     delta: [-2, -2],
@@ -482,8 +529,8 @@ export default (game) => {
   const message = new GameObject();
   message.components.push(
     new TextComponent({
-      content: 'System Font: in Red',
-      position: [5, 5],
+      content: 'Status Message',
+      position: [1, 14],
       size: 3,
       color: [1, 0, 0, 1],
       font: './assets/fonts/system-default-font.fnt',
@@ -509,9 +556,19 @@ export default (game) => {
       key: KeyboardKeys.V,
     }],
   }));
+  camera.components.push(new MoveOnMouseComponent({
+    entityId: portal.id,
+    mouseKey: MouseButton.Left,
+    type: 'clicked',
+  }));
 
   camHero.components.push(new FocusAtComponent({
     entityId: hero.id,
+  }));
+  camHero.components.push(new MoveOnMouseComponent({
+    entityId: hero.id,
+    mouseKey: MouseButton.Left,
+    type: 'pressed',
   }));
 
   camBrain.components.push(new FocusAtComponent({
@@ -529,4 +586,5 @@ export default (game) => {
   scene.use(new CameraShakeSystem());
   scene.use(new CameraFollowSystem());
   scene.use(new TrackMousePositionSystem());
+  scene.use(new MouseMoveEntitySystem());
 };

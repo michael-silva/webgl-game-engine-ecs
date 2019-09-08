@@ -65,6 +65,7 @@ export const MouseButton = Object.freeze({
   Left: 0,
   Middle: 1,
   Right: 2,
+  LastButtonCode: 3,
 });
 
 export class KeyboardState {
@@ -74,19 +75,11 @@ export class KeyboardState {
     this.previousStateKeys = defaultArray.slice(0);
     this.clickedKeys = defaultArray.slice(0);
   }
-
-  isKeyPressed(key) {
-    return this.pressedKeys[key];
-  }
-
-  isKeyClicked(key) {
-    return this.clickedKeys[key];
-  }
 }
 
 export class MouseState {
   constructor() {
-    const defaultMouseArray = new Array(KeyboardKeys.LastKeyCode).fill(false);
+    const defaultMouseArray = new Array(MouseButton.LastButtonCode).fill(false);
     this.pressedButtons = defaultMouseArray.slice(0);
     this.previousStateButtons = defaultMouseArray.slice(0);
     this.clickedButtons = defaultMouseArray.slice(0);
@@ -94,47 +87,26 @@ export class MouseState {
     this.mousePosX = -1;
     this.mousePosY = -1;
   }
-
-  isButtonPressed(key) {
-    return this.pressedButtons[key];
-  }
-
-  isButtonClicked(key) {
-    return this.clickedButtons[key];
-  }
 }
 
-
-export class InputSystem {
+export class KeyboardInputSystem {
   constructor(element) {
     this._element = element;
     this._keyboardState = new KeyboardState();
-    this._mouseState = new MouseState();
 
     window.addEventListener('keydown', this._handleKeydown.bind(this), false);
     window.addEventListener('keyup', this._handleKeyup.bind(this), false);
-    window.addEventListener('mousedown', this._onMouseDown.bind(this), false);
-    window.addEventListener('mouseup', this._onMouseUp.bind(this), false);
-    window.addEventListener('mousemove', this._onMouseMove.bind(this), false);
   }
 
-  run(game) {
+  run(inputState) {
     const { pressedKeys, clickedKeys, previousStateKeys } = this._keyboardState;
     pressedKeys.forEach((pressed, key) => {
       clickedKeys[key] = pressed && !previousStateKeys[key];
       previousStateKeys[key] = pressed;
     });
 
-    const { clickedButtons, pressedButtons, previousStateButtons } = this._mouseState;
-    for (let i = 0; i < 3; i++) {
-      clickedButtons[i] = (!previousStateButtons[i]) && pressedButtons[i];
-      previousStateButtons[i] = pressedButtons[i];
-    }
-
     // eslint-disable-next-line
-    game.keyboard = this._keyboardState;
-    // eslint-disable-next-line
-    game.mouse = this._mouseState;
+    inputState.keyboard = this._keyboardState;
   }
 
   _handleKeydown(e) {
@@ -143,6 +115,28 @@ export class InputSystem {
 
   _handleKeyup(e) {
     this._keyboardState.pressedKeys[e.keyCode] = false;
+  }
+}
+
+export class MouseInputSystem {
+  constructor(element) {
+    this._element = element;
+    this._mouseState = new MouseState();
+
+    window.addEventListener('mousedown', this._onMouseDown.bind(this), false);
+    window.addEventListener('mouseup', this._onMouseUp.bind(this), false);
+    window.addEventListener('mousemove', this._onMouseMove.bind(this), false);
+  }
+
+  run(inputState) {
+    const { clickedButtons, pressedButtons, previousStateButtons } = this._mouseState;
+    for (let i = 0; i < 3; i++) {
+      clickedButtons[i] = (!previousStateButtons[i]) && pressedButtons[i];
+      previousStateButtons[i] = pressedButtons[i];
+    }
+
+    // eslint-disable-next-line
+    inputState.mouse = this._mouseState;
   }
 
   _onMouseDown(e) {
@@ -169,5 +163,25 @@ export class InputSystem {
       inside = true;
     }
     return inside;
+  }
+}
+
+export class InputState {
+  systems = []
+}
+
+export class InputEngine {
+  constructor(element) {
+    this.state = new InputState();
+    this.state.systems = [
+      new KeyboardInputSystem(element),
+      new MouseInputSystem(element),
+    ];
+  }
+
+  run(game) {
+    this.state.systems.forEach((system) => {
+      system.run(this.state, game);
+    });
   }
 }

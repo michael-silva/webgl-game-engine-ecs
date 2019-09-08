@@ -15,7 +15,7 @@ import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
   run(game) {
-    const { keyboard } = game;
+    const { inputState: { keyboard } } = game;
     if (keyboard.pressedKeys[KeyboardKeys.One]) {
       // eslint-disable-next-line no-param-reassign
       game.currentScene = 0;
@@ -42,7 +42,7 @@ export class KeyboardChangeDemoSystem {
     }
     if (keyboard.pressedKeys[KeyboardKeys.Seven]) {
       // eslint-disable-next-line no-param-reassign
-      game.currentScene = 1;
+      game.currentScene = 6;
     }
   }
 }

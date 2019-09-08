@@ -6,16 +6,7 @@ import {
   TextSystem, GarbageCollectorSystem,
 } from './systems';
 import { RenderEngine } from './render-system';
-import { InputSystem } from './input-system';
-
-// @component
-export class GameRenderState {
-  constructor(gl, buffers) {
-    this.gl = gl;
-    this.buffers = buffers;
-    this.shaders = {};
-  }
-}
+import { InputEngine } from './input-system';
 
 // @component
 export class GameWorldEntity {
@@ -53,10 +44,6 @@ export class GameSceneEntity {
 
   cameras = [];
 
-  keyboard = null; // reference
-
-  mouse = null; // reference
-
   worlds = [];
 
   systems = [];
@@ -71,11 +58,9 @@ export class GameEntity {
 
   renderState = null;
 
+  inputState = null;
+
   loopState = new LoopState();
-
-  keyboard = null; // reference
-
-  mouse = null; // reference
 
   preSystems = [];
 
@@ -183,11 +168,13 @@ class GameScene {
 export class GameEngine {
   constructor(canvas) {
     this._game = new GameEntity();
+    // TODO: Refactor to create a generic system of engines
     this._game.renderEngine = new RenderEngine(canvas);
     this._game.renderState = this._game.renderEngine.state;
+    this._game.inputEngine = new InputEngine(canvas);
+    this._game.inputState = this._game.inputEngine.state;
     this._loop = new GameLoopSystem();
     this.useBefore(new LoaderSystem());
-    this.useBefore(new InputSystem(canvas));
     this.useAfter(new TextSystem());
     this.useAfter(new GarbageCollectorSystem());
   }

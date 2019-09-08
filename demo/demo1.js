@@ -47,7 +47,8 @@ class RotationSystem {
 }
 
 class KeyboardRotationSystem {
-  run({ entities }, scene, { keyboard }) {
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
       const rotation = e.components.find((c) => c instanceof RotationComponent);
@@ -61,8 +62,8 @@ class KeyboardRotationSystem {
 }
 
 class MovementPortalSystem {
-  run({ entities }, { cameras }) {
-    const [camera] = cameras;
+  run({ entities }, { scenes, currentScene }) {
+    const [camera] = scenes[currentScene].cameras;
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
     const MIN_X = worldCoordinate.center[0] - worldCoordinate.width / 2;

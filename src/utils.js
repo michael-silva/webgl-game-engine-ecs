@@ -762,13 +762,13 @@ export class FontUtils {
 }
 
 export class CameraUtils {
-  static getWcHeight(worldCoordinate, viewport) {
-    return worldCoordinate.width * (viewport.array[3] / viewport.array[2]);
+  static getWcHeight(worldCoordinate, viewportArray) {
+    return worldCoordinate.width * (viewportArray[3] / viewportArray[2]);
   }
 
-  static getWcTransform(worldCoordinate, viewport, zone = 1) {
+  static getWcTransform(worldCoordinate, viewportArray, zone = 1) {
     const position = worldCoordinate.center;
-    const height = CameraUtils.getWcHeight(worldCoordinate, viewport);
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
     const size = [worldCoordinate.width * zone, height * zone];
     return {
       position,
@@ -803,28 +803,28 @@ export class CameraUtils {
     };
   }
 
-  static getMouseWorldCoordinate(viewport, worldCoordinate, mouseState) {
-    const height = CameraUtils.getWcHeight(worldCoordinate, viewport);
+  static getMouseWorldCoordinate(viewportArray, worldCoordinate, mouseState) {
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
     const minWcX = worldCoordinate.center[0] - worldCoordinate.width / 2;
     const minWcY = worldCoordinate.center[1] - height / 2;
-    const dcPosition = CameraUtils.getMouseDeviceCoordinate(viewport, mouseState);
+    const dcPosition = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
     return [
-      minWcX + (dcPosition[0] * (worldCoordinate.width / viewport[CameraViewport.Width])),
-      minWcY + (dcPosition[1] * (height / viewport[CameraViewport.Height])),
+      minWcX + (dcPosition[0] * (worldCoordinate.width / viewportArray[CameraViewport.Width])),
+      minWcY + (dcPosition[1] * (height / viewportArray[CameraViewport.Height])),
     ];
   }
 
-  static getMouseDeviceCoordinate(viewport, mouseState) {
+  static getMouseDeviceCoordinate(viewportArray, mouseState) {
     const { mousePosX, mousePosY } = mouseState;
     return [
-      mousePosX - viewport[CameraViewport.X],
-      mousePosY - viewport[CameraViewport.Y],
+      mousePosX - viewportArray[CameraViewport.X],
+      mousePosY - viewportArray[CameraViewport.Y],
     ];
   }
 
-  static isMouseInViewport(viewport, mouseState) {
-    const [dcX, dcY] = CameraUtils.getMouseDeviceCoordinate(viewport, mouseState);
-    return ((dcX >= 0) && (dcX < viewport[CameraViewport.Width])
-                && (dcY >= 0) && (dcY < viewport[CameraViewport.Height]));
+  static isMouseInViewport(viewportArray, mouseState) {
+    const [dcX, dcY] = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
+    return ((dcX >= 0) && (dcX < viewportArray[CameraViewport.Width])
+                && (dcY >= 0) && (dcY < viewportArray[CameraViewport.Height]));
   }
 }

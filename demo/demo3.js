@@ -54,7 +54,7 @@ class SpritePositionDeltaComponent {
 }
 
 class UpdateSpritePositionSystem {
-  run({ entities }, scene, { resourceMap }) {
+  run({ entities }, { resourceMap }) {
     entities.forEach((e) => {
       const renderable = e.components.find((c) => c instanceof RenderComponent);
       const deltaPosition = e.components.find((c) => c instanceof SpritePositionDeltaComponent);
