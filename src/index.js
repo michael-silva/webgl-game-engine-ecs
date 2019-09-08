@@ -1,12 +1,11 @@
 /* eslint-disable max-classes-per-file */
 
 import { mat4, vec2 } from 'gl-matrix';
-import { RenderUtils, ShaderUtils } from './utils';
 import {
   GameLoopSystem, LoaderSystem,
   TextSystem, GarbageCollectorSystem,
 } from './systems';
-import { RenderSystem } from './render-system';
+import { RenderEngine } from './render-system';
 import { InputSystem } from './input-system';
 
 // @component
@@ -184,18 +183,11 @@ class GameScene {
 export class GameEngine {
   constructor(canvas) {
     this._game = new GameEntity();
-    const gl = RenderUtils.getGL(canvas);
-    const vertexBuffer = RenderUtils.initBuffers(gl);
-    const state = new GameRenderState(gl, vertexBuffer);
-    state.shaders = {
-      simpleShader: ShaderUtils.createSimpleShader(state),
-      textureShader: ShaderUtils.createTextureShader(state),
-    };
-    this._game.renderState = state;
+    this._game.renderEngine = new RenderEngine(canvas);
+    this._game.renderState = this._game.renderEngine.state;
     this._loop = new GameLoopSystem();
     this.useBefore(new LoaderSystem());
     this.useBefore(new InputSystem(canvas));
-    this.useAfter(new RenderSystem());
     this.useAfter(new TextSystem());
     this.useAfter(new GarbageCollectorSystem());
   }
@@ -223,7 +215,7 @@ export class GameEngine {
     this._game.loaders.push(map);
   }
 
-  start({ scene = 0 } = {}) {
+  run({ scene = 0 } = {}) {
     this._game.currentScene = scene;
     this._loop.run(this._game);
   }

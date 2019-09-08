@@ -3,6 +3,7 @@ import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
+import { CameraViewport } from './camera';
 
 export class BoundingUtils {
   static getBound(transform) {
@@ -761,9 +762,13 @@ export class FontUtils {
 }
 
 export class CameraUtils {
+  static getWcHeight(worldCoordinate, viewport) {
+    return worldCoordinate.width * (viewport.array[3] / viewport.array[2]);
+  }
+
   static getWcTransform(worldCoordinate, viewport, zone = 1) {
     const position = worldCoordinate.center;
-    const height = worldCoordinate.width * (viewport.array[3] / viewport.array[2]);
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewport);
     const size = [worldCoordinate.width * zone, height * zone];
     return {
       position,
@@ -796,5 +801,30 @@ export class CameraUtils {
       center,
       width,
     };
+  }
+
+  static getMouseWorldCoordinate(viewport, worldCoordinate, mouseState) {
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewport);
+    const minWcX = worldCoordinate.center[0] - worldCoordinate.width / 2;
+    const minWcY = worldCoordinate.center[1] - height / 2;
+    const dcPosition = CameraUtils.getMouseDeviceCoordinate(viewport, mouseState);
+    return [
+      minWcX + (dcPosition[0] * (worldCoordinate.width / viewport[CameraViewport.Width])),
+      minWcY + (dcPosition[1] * (height / viewport[CameraViewport.Height])),
+    ];
+  }
+
+  static getMouseDeviceCoordinate(viewport, mouseState) {
+    const { mousePosX, mousePosY } = mouseState;
+    return [
+      mousePosX - viewport[CameraViewport.X],
+      mousePosY - viewport[CameraViewport.Y],
+    ];
+  }
+
+  static isMouseInViewport(viewport, mouseState) {
+    const [dcX, dcY] = CameraUtils.getMouseDeviceCoordinate(viewport, mouseState);
+    return ((dcX >= 0) && (dcX < viewport[CameraViewport.Width])
+                && (dcY >= 0) && (dcY < viewport[CameraViewport.Height]));
   }
 }

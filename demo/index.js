@@ -67,9 +67,7 @@ function main() {
       initDemo7(game);
 
       game.useAfter(new SoundSystem());
-      game.start();
-      // eslint-disable-next-line
-      game._game.currentScene = 6
+      game.run({ scene: 6 });
     });
 }
 

@@ -10,7 +10,7 @@ import {
   BoundingUtils, RenderUtils, TransformUtils, CameraUtils,
 } from '../src/utils';
 import {
-  TransformComponent, RenderComponent,
+  TransformComponent, RenderComponent, TextComponent,
 } from '../src/systems';
 import {
   Minion, Hero, Brain, Portal,
@@ -19,6 +19,7 @@ import { KeyboardKeys } from '../src/input-system';
 import {
   BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
+import { GameObject } from '../src';
 
 class WorldCoordinateInterpolation {
   constructor(props) {
@@ -374,6 +375,16 @@ class CameraShakeSystem {
   }
 }
 
+class TrackMousePositionSystem {
+  run({ entities }, scene, { mouse }) {
+    entities.forEach((e) => {
+      const text = e.components.find((c) => c instanceof TextComponent);
+      if (!text) return;
+      text.content = `X=${mouse.mousePosX},Y=${mouse.mousePosY}`;
+    });
+  }
+}
+
 export default (game) => {
   const scene = game.createScene();
   const cameraBackground = new BackgroundComponent({
@@ -468,6 +479,18 @@ export default (game) => {
   brain.components.push(new TargetComponent({ id: hero.id }));
   scene.addEntity(brain);
 
+  const message = new GameObject();
+  message.components.push(
+    new TextComponent({
+      content: 'System Font: in Red',
+      position: [5, 5],
+      size: 3,
+      color: [1, 0, 0, 1],
+      font: './assets/fonts/system-default-font.fnt',
+    }),
+  );
+  scene.addEntity(message);
+
   camera.components.push(new FocusAtKeysComponent({
     options: [{
       entityId: minionLeft.id,
@@ -505,4 +528,5 @@ export default (game) => {
   scene.use(new CameraPanSystem());
   scene.use(new CameraShakeSystem());
   scene.use(new CameraFollowSystem());
+  scene.use(new TrackMousePositionSystem());
 };

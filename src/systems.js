@@ -58,6 +58,7 @@ export class GameLoopSystem {
           scene.systems.forEach((s) => s.run(world, scene, game));
         });
         game.posSystems.forEach((s) => s.run(game));
+        game.renderEngine.run(game);
       }
     }
   }
@@ -162,10 +163,6 @@ export class TextSystem {
             if (hasChanges) {
               this._updateCharacters(text, resourceMap[text.font].asset);
             }
-            text.characters.forEach((char) => {
-              const { renderable, transform } = char;
-              RenderUtils.renderEntity(game, renderable, transform);
-            });
           });
       });
     });

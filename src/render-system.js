@@ -1,6 +1,6 @@
 import { mat4 } from 'gl-matrix';
-import { RenderUtils, AnimationType } from './utils';
-import { TransformComponent, RenderComponent } from './systems';
+import { RenderUtils, AnimationType, ShaderUtils } from './utils';
+import { TransformComponent, RenderComponent, TextComponent } from './systems';
 import {
   WorldCoordinateComponent, ViewportComponent, BackgroundComponent, BackgroundTypes,
 } from './camera';
@@ -35,34 +35,84 @@ export class SpriteAnimation {
 }
 
 // @system
-export class RenderSystem {
+export class TextRenderSystem {
+  render(world, camera, renderState, game) {
+    world.entities.forEach((e) => {
+      e.components
+        .filter((c) => c instanceof TextComponent)
+        .forEach((text) => {
+          if (!text || !game.resourceMap[text.font] || !game.resourceMap[text.font].loaded) return;
+          text.characters.forEach((char) => {
+            const { renderable, transform } = char;
+            RenderUtils.renderEntity(game, camera, renderable, transform);
+          });
+        });
+    });
+  }
+}
+
+// @system
+export class TextureRenderSystem {
+  render(world, camera, renderState, game) {
+    world.entities.forEach((e) => {
+      const renderable = e.components.find((c) => c instanceof RenderComponent);
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      if (!renderable || !transform) return;
+      const { texture } = renderable;
+      const shader = texture
+        ? renderState.shaders.textureShader
+        : renderState.shaders.simpleShader;
+      if (!shader || !shader.modelTransform) return;
+      if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
+      RenderUtils.renderEntity(game, camera, renderable, transform);
+    });
+  }
+}
+
+export class RenderState {
+  constructor({ gl, shaders, buffers }) {
+    this.gl = gl;
+    this.shaders = shaders;
+    this.buffers = buffers;
+    this.systems = [];
+  }
+}
+
+// @system
+export class RenderEngine {
+  constructor(canvas) {
+    const gl = RenderUtils.getGL(canvas);
+    const buffers = RenderUtils.initBuffers(gl);
+    const shaders = {
+      simpleShader: ShaderUtils.createSimpleShader({ gl, buffers }),
+      textureShader: ShaderUtils.createTextureShader({ gl, buffers }),
+    };
+
+    this.state = new RenderState({
+      gl,
+      shaders,
+      buffers,
+    });
+    this.state.systems.push(new TextureRenderSystem());
+    this.state.systems.push(new TextRenderSystem());
+  }
+
   run(game) {
-    const { resourceMap } = game;
-    const { shaders } = game.renderState;
     const scene = game.scenes[game.currentScene];
 
-    // TODO: Refactor this logic to split the texture and no texture, make this extensibility
     scene.cameras.forEach((camera) => {
-      this.preRenderSetup(game, camera);
+      this._preRenderSetup(game, camera);
       scene.worlds.forEach((world) => {
         if (!world.active) return;
-        world.entities.forEach((e) => {
-          const renderable = e.components.find((c) => c instanceof RenderComponent);
-          const transform = e.components.find((c) => c instanceof TransformComponent);
-          if (!renderable || !transform) return;
-          const { texture } = renderable;
-          const shader = texture ? shaders.textureShader : shaders.simpleShader;
-          if (!shader || !shader.modelTransform) return;
-          if (texture && (!resourceMap[texture] || !resourceMap[texture].loaded)) return;
-          RenderUtils.renderEntity(game, camera, renderable, transform);
+        this.state.systems.forEach((system) => {
+          system.render(world, camera, this.state, game);
         });
       });
     });
   }
 
-  preRenderSetup(game, camera) {
-    const { renderState } = game;
-    this.setupViewProjection(renderState.gl, camera);
+  _preRenderSetup(game, camera) {
+    this._setupViewProjection(this.state.gl, camera);
     const background = camera.components.find((c) => c instanceof BackgroundComponent);
     const { texture, type } = background;
     if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
@@ -81,7 +131,7 @@ export class RenderSystem {
     RenderUtils.renderEntity(game, camera, background, transform);
   }
 
-  setupViewProjection(gl, camera) {
+  _setupViewProjection(gl, camera) {
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const viewport = camera.components.find((c) => c instanceof ViewportComponent);
     const background = camera.components.find((c) => c instanceof BackgroundComponent);

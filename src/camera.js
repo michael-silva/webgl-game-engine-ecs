@@ -5,6 +5,13 @@ export const BackgroundTypes = Object.freeze({
   Normal: 'normal',
 });
 
+export const CameraViewport = Object.freeze({
+  X: 0,
+  Y: 1,
+  Width: 2,
+  Height: 3,
+});
+
 export class BackgroundComponent {
   constructor({
     type, texture, position, size, color,
