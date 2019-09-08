@@ -423,9 +423,9 @@ export class RenderUtils {
       else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
 
       const { lights } = scenes[currentScene];
-      lights.forEach((light) => {
+      lights.forEach((light, i) => {
         if (light.isOn) {
-          RenderUtils.activateLight(gl, shader, light, camera);
+          RenderUtils.activateLight(gl, shader.lights[i], light, camera);
         }
       });
     }
@@ -508,14 +508,17 @@ export class RenderUtils {
     gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
   }
 
-  static activateLight(gl, shader, light, camera) {
-    gl.uniform1i(shader.lightOn, light.isOn);
+  static activateLight(gl, shaderLight, light, camera) {
+    gl.uniform1i(shaderLight.lightOn, light.isOn);
     if (light.isOn) {
       const p = CameraUtils.wcPosToPixel(camera, light.position);
-      const r = CameraUtils.wcSizeToPixel(camera, light.radius);
-      gl.uniform4fv(shader.lightColor, light.color);
-      gl.uniform4fv(shader.lightPosition, vec4.fromValues(p[0], p[1], p[2], 1));
-      gl.uniform1f(shader.lightRadius, r);
+      const ic = CameraUtils.wcSizeToPixel(camera, light.near);
+      const oc = CameraUtils.wcSizeToPixel(camera, light.far);
+      gl.uniform4fv(shaderLight.lightColor, light.color);
+      gl.uniform4fv(shaderLight.lightPosition, vec4.fromValues(p[0], p[1], p[2], 1));
+      gl.uniform1f(shaderLight.lightNear, ic);
+      gl.uniform1f(shaderLight.lightFar, oc);
+      gl.uniform1f(shaderLight.lightIntensity, light.intensity);
     }
   }
 
@@ -784,18 +787,36 @@ export class ShaderUtils {
       fragmentShaderSource: textureFragmentShader,
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
-    const lightColor = gl.getUniformLocation(shader.compiledShader, 'uLightColor');
-    const lightPosition = gl.getUniformLocation(shader.compiledShader, 'uLightPosition');
-    const lightRadius = gl.getUniformLocation(shader.compiledShader, 'uLightRadius');
-    const lightOn = gl.getUniformLocation(shader.compiledShader, 'uLightOn');
+
+    const lights = [
+      ShaderUtils.initializeShaderLight(gl, shader, 0),
+      ShaderUtils.initializeShaderLight(gl, shader, 1),
+      ShaderUtils.initializeShaderLight(gl, shader, 2),
+      ShaderUtils.initializeShaderLight(gl, shader, 3),
+    ];
 
     return {
       ...shader,
-      lightColor,
-      lightPosition,
-      lightRadius,
-      lightOn,
+      lights,
       shaderTextureCoordAttribute,
+    };
+  }
+
+  static initializeShaderLight(gl, shader, index) {
+    const lightColor = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Color`);
+    const lightPosition = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Position`);
+    const lightNear = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Near`);
+    const lightFar = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Far`);
+    const lightIntensity = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Intensity`);
+    const lightOn = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].IsOn`);
+
+    return {
+      lightColor,
+      lightFar,
+      lightNear,
+      lightIntensity,
+      lightOn,
+      lightPosition,
     };
   }
 }

@@ -42,10 +42,15 @@ export class GlobalLight {
 }
 
 export class Light {
-  constructor({ color, position = [0, 0], radius }) {
+  constructor({
+    color, position = [0, 0],
+    near, far, intensity,
+  }) {
     this.color = color || [0.1, 0.1, 0.1, 1]; // light color
     this.position = [...position, 5]; // light position in WC
-    this.radius = radius || 10; // effective radius in WC
+    this.near = near || 5; // within Near is fully lighted
+    this.far = far || 10; // farther than Far is not lighted
+    this.intensity = intensity || 1;
     this.isOn = true;
   }
 }
@@ -146,6 +151,8 @@ class GameWorld {
 }
 
 class GameScene {
+  static MAX_LIGHTS = 100;
+
   constructor(scene) {
     this._scene = scene;
   }
@@ -163,6 +170,9 @@ class GameScene {
   }
 
   addLight(light) {
+    if (this._scene.lights.length === GameScene.MAX_LIGHTS) {
+      throw new Error(`Isn't possible to add more lights, the maximum is ${GameScene.MAX_LIGHTS}`);
+    }
     this._scene.lights.push(light);
   }
 

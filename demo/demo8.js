@@ -50,7 +50,7 @@ export default (game) => {
   camera.components.push(new BackgroundComponent({
     // type: BackgroundTypes.Fixed,
     color: [0.8, 0.8, 0.8, 0],
-    size: [190, 100],
+    size: [100, 100],
     position: [50, 35],
     // position: [0, 0],
     texture: './assets/images/bg.png',
@@ -64,12 +64,38 @@ export default (game) => {
   ]);
 
   // the light
-  const light = new Light({
-    radius: 8,
-    position: [30, 30, 2],
-    color: [0.9, 0.9, 0.2, 1],
+  const light1 = new Light({
+    near: 20,
+    far: 50,
+    intensity: 5.5,
+    position: [21, 58, 5],
+    color: [0.2, 0.2, 0.8, 1],
   });
-  scene.addLight(light);
+  scene.addLight(light1);
+  const light2 = new Light({
+    near: 20,
+    far: 45,
+    intensity: 2.8,
+    position: [24, 24, 8],
+    color: [0.4, 0.7, 0.4, 1],
+  });
+  scene.addLight(light2);
+  const light3 = new Light({
+    near: 10,
+    far: 35,
+    intensity: 3,
+    position: [66, 23, 10],
+    color: [0.7, 0.7, 0.7, 1],
+  });
+  scene.addLight(light3);
+  const light4 = new Light({
+    near: 15,
+    far: 40,
+    intensity: 3,
+    position: [72, 57, 6],
+    color: [0.8, 0.6, 0.6, 1],
+  });
+  scene.addLight(light4);
 
 
   const minionLeft = new Minion(30, 30);
