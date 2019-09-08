@@ -8,7 +8,7 @@ import {
   KeyboardRotationSystem, MovementSystem,
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
-import { GameObject } from '../src';
+import { GameObject, Light } from '../src';
 import { TextComponent } from '../src/systems';
 
 class GlobalLightControlSystem {
@@ -62,6 +62,15 @@ export default (game) => {
     './assets/images/minion_sprite.png',
     './assets/fonts/system-default-font.fnt',
   ]);
+
+  // the light
+  const light = new Light({
+    radius: 8,
+    position: [30, 30, 2],
+    color: [0.9, 0.9, 0.2, 1],
+  });
+  scene.addLight(light);
+
 
   const minionLeft = new Minion(30, 30);
   scene.addEntity(minionLeft);

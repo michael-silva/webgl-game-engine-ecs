@@ -48,10 +48,22 @@ export class ViewportComponent {
   }
 }
 
+export class PerRenderCache {
+  wcToPixelRatio = 1;
+
+  // WC to pixel transformation
+  orgX = 1;
+
+  // Lower-left corner of camera in WC
+  orgY = 1;
+}
+
+
 export class CameraEntity {
   components = []
 
   constructor() {
+    this.renderCache = new PerRenderCache();
     // transformation matrices
     this.viewMatrix = mat4.create();
     this.projMatrix = mat4.create();

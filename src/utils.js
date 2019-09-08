@@ -1,9 +1,11 @@
-import { vec3, mat4, vec2 } from 'gl-matrix';
+import {
+  vec3, mat4, vec2, vec4,
+} from 'gl-matrix';
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
-import { CameraViewport } from './camera';
+import { CameraViewport, ViewportComponent } from './camera';
 
 export class BoundingUtils {
   static getBound(transform) {
@@ -137,6 +139,94 @@ export class TextureInfo {
   }
 }
 
+export class CameraUtils {
+  static getWcHeight(worldCoordinate, viewportArray) {
+    return worldCoordinate.width * (viewportArray[3] / viewportArray[2]);
+  }
+
+  static getWcTransform(worldCoordinate, viewportArray, zone = 1) {
+    const position = worldCoordinate.center;
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
+    const size = [worldCoordinate.width * zone, height * zone];
+    return {
+      position,
+      size,
+    };
+  }
+
+  static panBy(worldCoordinate, delta) {
+    return [
+      worldCoordinate.center[0] + delta[0],
+      worldCoordinate.center[1] + delta[1],
+    ];
+  }
+
+  static zoomBy(worldCoordinate, zoom) {
+    if (zoom > 0) {
+      return worldCoordinate.width * zoom;
+    }
+    return worldCoordinate.width;
+  }
+
+  static zoomTowards(worldCoordinate, pos, zoom) {
+    const delta = [];
+    const center = [...worldCoordinate.center];
+    vec2.sub(delta, pos, center);
+    vec2.scale(delta, delta, zoom - 1);
+    vec2.sub(center, center, delta);
+    const width = CameraUtils.zoomBy(worldCoordinate, zoom);
+    return {
+      center,
+      width,
+    };
+  }
+
+  static getMouseWorldCoordinate(viewportArray, worldCoordinate, mouseState) {
+    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
+    const minWcX = worldCoordinate.center[0] - worldCoordinate.width / 2;
+    const minWcY = worldCoordinate.center[1] - height / 2;
+    const dcPosition = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
+    return [
+      minWcX + (dcPosition[0] * (worldCoordinate.width / viewportArray[CameraViewport.Width])),
+      minWcY + (dcPosition[1] * (height / viewportArray[CameraViewport.Height])),
+    ];
+  }
+
+  static getMouseDeviceCoordinate(viewportArray, mouseState) {
+    const { mousePosX, mousePosY } = mouseState;
+    return [
+      mousePosX - viewportArray[CameraViewport.X],
+      mousePosY - viewportArray[CameraViewport.Y],
+    ];
+  }
+
+  static isMouseInViewport(viewportArray, mouseState) {
+    const [dcX, dcY] = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
+    return ((dcX >= 0) && (dcX < viewportArray[CameraViewport.Width])
+                && (dcY >= 0) && (dcY < viewportArray[CameraViewport.Height]));
+  }
+
+  static fakeZInPixelSpace(camera, z) {
+    return z * camera.renderCache.wcToPixelRatio;
+  }
+
+  static wcSizeToPixel(camera, s) {
+    return (s * camera.renderCache.wcToPixelRatio) + 0.5;
+  }
+
+  static wcPosToPixel(camera, p) {
+    const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+    // Convert the position to pixel space
+    const x = viewport.array[CameraViewport.X]
+      + ((p[0] - camera.renderCache.orgX)
+      * camera.renderCache.wcToPixelRatio) + 0.5;
+    const y = viewport.array[CameraViewport.Y]
+      + ((p[1] - camera.renderCache.orgY)
+      * camera.renderCache.wcToPixelRatio) + 0.5;
+    const z = CameraUtils.fakeZInPixelSpace(camera, p[2]);
+    return vec3.fromValues(x, y, z);
+  }
+}
 
 // Assumption: first sprite in an animation is always the left-most element.
 export const AnimationType = Object.freeze({
@@ -331,6 +421,13 @@ export class RenderUtils {
         RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
       }
       else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+
+      const { lights } = scenes[currentScene];
+      lights.forEach((light) => {
+        if (light.isOn) {
+          RenderUtils.activateLight(gl, shader, light, camera);
+        }
+      });
     }
 
     const xform = TransformUtils.getXForm(transform);
@@ -409,6 +506,17 @@ export class RenderUtils {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.enableVertexAttribArray(shaderTextureCoordAttribute);
     gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  }
+
+  static activateLight(gl, shader, light, camera) {
+    gl.uniform1i(shader.lightOn, light.isOn);
+    if (light.isOn) {
+      const p = CameraUtils.wcPosToPixel(camera, light.position);
+      const r = CameraUtils.wcSizeToPixel(camera, light.radius);
+      gl.uniform4fv(shader.lightColor, light.color);
+      gl.uniform4fv(shader.lightPosition, vec4.fromValues(p[0], p[1], p[2], 1));
+      gl.uniform1f(shader.lightRadius, r);
+    }
   }
 
   static setTextureCoordinate(gl, buffer, textureCoordinate) {
@@ -676,9 +784,17 @@ export class ShaderUtils {
       fragmentShaderSource: textureFragmentShader,
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
+    const lightColor = gl.getUniformLocation(shader.compiledShader, 'uLightColor');
+    const lightPosition = gl.getUniformLocation(shader.compiledShader, 'uLightPosition');
+    const lightRadius = gl.getUniformLocation(shader.compiledShader, 'uLightRadius');
+    const lightOn = gl.getUniformLocation(shader.compiledShader, 'uLightOn');
 
     return {
       ...shader,
+      lightColor,
+      lightPosition,
+      lightRadius,
+      lightOn,
       shaderTextureCoordAttribute,
     };
   }
@@ -769,73 +885,5 @@ export class FontUtils {
     // eslint-disable-next-line no-param-reassign
     fontInfo.chars[character] = returnInfo;
     return returnInfo;
-  }
-}
-
-export class CameraUtils {
-  static getWcHeight(worldCoordinate, viewportArray) {
-    return worldCoordinate.width * (viewportArray[3] / viewportArray[2]);
-  }
-
-  static getWcTransform(worldCoordinate, viewportArray, zone = 1) {
-    const position = worldCoordinate.center;
-    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
-    const size = [worldCoordinate.width * zone, height * zone];
-    return {
-      position,
-      size,
-    };
-  }
-
-  static panBy(worldCoordinate, delta) {
-    return [
-      worldCoordinate.center[0] + delta[0],
-      worldCoordinate.center[1] + delta[1],
-    ];
-  }
-
-  static zoomBy(worldCoordinate, zoom) {
-    if (zoom > 0) {
-      return worldCoordinate.width * zoom;
-    }
-    return worldCoordinate.width;
-  }
-
-  static zoomTowards(worldCoordinate, pos, zoom) {
-    const delta = [];
-    const center = [...worldCoordinate.center];
-    vec2.sub(delta, pos, center);
-    vec2.scale(delta, delta, zoom - 1);
-    vec2.sub(center, center, delta);
-    const width = CameraUtils.zoomBy(worldCoordinate, zoom);
-    return {
-      center,
-      width,
-    };
-  }
-
-  static getMouseWorldCoordinate(viewportArray, worldCoordinate, mouseState) {
-    const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
-    const minWcX = worldCoordinate.center[0] - worldCoordinate.width / 2;
-    const minWcY = worldCoordinate.center[1] - height / 2;
-    const dcPosition = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
-    return [
-      minWcX + (dcPosition[0] * (worldCoordinate.width / viewportArray[CameraViewport.Width])),
-      minWcY + (dcPosition[1] * (height / viewportArray[CameraViewport.Height])),
-    ];
-  }
-
-  static getMouseDeviceCoordinate(viewportArray, mouseState) {
-    const { mousePosX, mousePosY } = mouseState;
-    return [
-      mousePosX - viewportArray[CameraViewport.X],
-      mousePosY - viewportArray[CameraViewport.Y],
-    ];
-  }
-
-  static isMouseInViewport(viewportArray, mouseState) {
-    const [dcX, dcY] = CameraUtils.getMouseDeviceCoordinate(viewportArray, mouseState);
-    return ((dcX >= 0) && (dcX < viewportArray[CameraViewport.Width])
-                && (dcY >= 0) && (dcY < viewportArray[CameraViewport.Height]));
   }
 }

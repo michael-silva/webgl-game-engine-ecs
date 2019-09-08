@@ -1,8 +1,10 @@
 import { mat4 } from 'gl-matrix';
-import { RenderUtils, AnimationType, ShaderUtils } from './utils';
+import {
+  RenderUtils, AnimationType, ShaderUtils, CameraUtils,
+} from './utils';
 import { TransformComponent, RenderComponent, TextComponent } from './systems';
 import {
-  WorldCoordinateComponent, ViewportComponent, BackgroundComponent, BackgroundTypes,
+  WorldCoordinateComponent, ViewportComponent, BackgroundComponent, BackgroundTypes, CameraViewport,
 } from './camera';
 
 export class SpriteAnimation {
@@ -178,5 +180,15 @@ export class RenderEngine {
       viewport.farPlane); // z-distant to far plane
     // Step B3: concatnate view and project matrices
     mat4.multiply(camera.viewProjection, camera.projMatrix, camera.viewMatrix);
+
+    // Step B4: compute and cache per-rendering information
+    const wcHeight = CameraUtils.getWcHeight(worldCoordinate, viewport.array);
+    const wcWidth = worldCoordinate.width;
+    // eslint-disable-next-line no-param-reassign
+    camera.renderCache.wcToPixelRatio = viewport.array[CameraViewport.Width] / wcWidth;
+    // eslint-disable-next-line no-param-reassign
+    camera.renderCache.orgX = worldCoordinate.center[0] - (wcWidth / 2);
+    // eslint-disable-next-line no-param-reassign
+    camera.renderCache.orgY = worldCoordinate.center[1] - (wcHeight / 2);
   }
 }

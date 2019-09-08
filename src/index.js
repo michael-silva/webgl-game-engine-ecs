@@ -41,6 +41,15 @@ export class GlobalLight {
   ambientIntensity = 1;
 }
 
+export class Light {
+  constructor({ color, position = [0, 0], radius }) {
+    this.color = color || [0.1, 0.1, 0.1, 1]; // light color
+    this.position = [...position, 5]; // light position in WC
+    this.radius = radius || 10; // effective radius in WC
+    this.isOn = true;
+  }
+}
+
 
 // @entity
 export class GameSceneEntity {
@@ -51,6 +60,8 @@ export class GameSceneEntity {
   resources = [];
 
   cameras = [];
+
+  lights = [];
 
   worlds = [];
 
@@ -149,6 +160,10 @@ class GameScene {
 
   setSound(sound) {
     this._scene.sound = sound;
+  }
+
+  addLight(light) {
+    this._scene.lights.push(light);
   }
 
   setGlobalLight(light) {
