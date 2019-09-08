@@ -11,6 +11,7 @@ import initDemo4 from './demo4';
 import initDemo5 from './demo5';
 import initDemo6 from './demo6';
 import initDemo7 from './demo7';
+import initDemo8 from './demo8';
 import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
@@ -44,6 +45,10 @@ export class KeyboardChangeDemoSystem {
       // eslint-disable-next-line no-param-reassign
       game.currentScene = 6;
     }
+    if (keyboard.pressedKeys[KeyboardKeys.Eight]) {
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 7;
+    }
   }
 }
 
@@ -65,9 +70,10 @@ function main() {
       initDemo5(game);
       initDemo6(game);
       initDemo7(game);
+      initDemo8(game);
 
       game.useAfter(new SoundSystem());
-      game.run({ scene: 6 });
+      game.run({ scene: 7 });
     });
 }
 

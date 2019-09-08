@@ -310,7 +310,8 @@ export class RenderUtils {
   }
 
   static renderEntity(game, camera, renderable, transform) {
-    const { resourceMap } = game;
+    const { resourceMap, scenes, currentScene } = game;
+    const { ambientColor, ambientIntensity } = scenes[currentScene].globalLight;
     const { gl, buffers, shaders } = game.renderState;
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
     const { color, texture, sprite } = renderable;
@@ -319,6 +320,7 @@ export class RenderUtils {
 
     if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
     RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
+    RenderUtils.activateGlobalLight(gl, shader, ambientColor, ambientIntensity);
     if (textureAsset) {
       if (sprite) {
         const { position, animation } = sprite;
@@ -379,6 +381,11 @@ export class RenderUtils {
       left + animation.width,
       animation.top - animation.height,
       animation.top];
+  }
+
+  static activateGlobalLight(gl, shader, ambientColor, ambientIntensity) {
+    gl.uniform4fv(shader.globalAmbientColor, ambientColor);
+    gl.uniform1f(shader.globalAmbientIntensity, ambientIntensity);
   }
 
   static activateShader(gl, buffer, shader, color, camera) {
@@ -634,6 +641,8 @@ export class ShaderUtils {
     const pixelColor = gl.getUniformLocation(compiledShader, 'uPixelColor');
     const modelTransform = gl.getUniformLocation(compiledShader, 'uModelTransform');
     const viewProjection = gl.getUniformLocation(compiledShader, 'uViewProjTransform');
+    const globalAmbientColor = gl.getUniformLocation(compiledShader, 'uGlobalAmbientColor');
+    const globalAmbientIntensity = gl.getUniformLocation(compiledShader, 'uGlobalAmbientIntensity');
 
     return {
       pixelColor,
@@ -642,6 +651,8 @@ export class ShaderUtils {
       fragmentShader,
       modelTransform,
       viewProjection,
+      globalAmbientColor,
+      globalAmbientIntensity,
       shaderVertexPositionAttribute,
     };
   }

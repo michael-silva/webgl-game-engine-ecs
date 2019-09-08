@@ -35,10 +35,18 @@ export class LoopState {
   FPS = 60;
 }
 
+export class GlobalLight {
+  ambientColor = [1, 1, 1, 1];
+
+  ambientIntensity = 1;
+}
+
 
 // @entity
 export class GameSceneEntity {
   sound = null;
+
+  globalLight = new GlobalLight();
 
   resources = [];
 
@@ -141,6 +149,10 @@ class GameScene {
 
   setSound(sound) {
     this._scene.sound = sound;
+  }
+
+  setGlobalLight(light) {
+    Object.assign(this._scene.globalLight, light);
   }
 
   addCamera(camera) {
