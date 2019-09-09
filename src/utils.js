@@ -5,6 +5,7 @@ import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
+import illuminationFragmentShader from './GLSLShaders/IlluminationFS.glsl';
 import { CameraViewport, ViewportComponent } from './camera';
 
 export class BoundingUtils {
@@ -399,14 +400,22 @@ export class RenderUtils {
     ];
   }
 
+  static selectShader(shaders, textureAsset, { normalMap }) {
+    if (textureAsset && normalMap) return shaders.normalMapShader;
+    if (textureAsset) return shaders.textureShader;
+    return shaders.simpleShader;
+  }
+
   static renderEntity(game, camera, renderable, transform) {
     const { resourceMap, scenes, currentScene } = game;
     const { ambientColor, ambientIntensity } = scenes[currentScene].globalLight;
     const { gl, buffers, shaders } = game.renderState;
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
-    const { color, texture, sprite } = renderable;
+    const {
+      color, texture, sprite, normalMap,
+    } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
-    const shader = textureAsset ? shaders.textureShader : shaders.simpleShader;
+    const shader = RenderUtils.selectShader(shaders, textureAsset, renderable);
 
     if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
     RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
@@ -425,9 +434,20 @@ export class RenderUtils {
       const { lights } = scenes[currentScene];
       lights.forEach((light, i) => {
         if (light.isOn) {
+          if (!shader.lights[i]) {
+            // eslint-disable-next-line no-use-before-define
+            shader.lights[i] = ShaderUtils.initializeShaderLight(gl, shader, i);
+          }
           RenderUtils.activateLight(gl, shader.lights[i], light, camera);
         }
       });
+
+      if ((normalMap && resourceMap[normalMap] && resourceMap[normalMap].loaded)
+        || renderable.normalMapAsset) {
+        const normalMapAsset = renderable.normalMapAsset || resourceMap[normalMap].asset;
+        RenderUtils.activateNormalMapShader(gl, shader);
+        RenderUtils.activateNormalMap(gl, normalMapAsset);
+      }
     }
 
     const xform = TransformUtils.getXForm(transform);
@@ -506,6 +526,11 @@ export class RenderUtils {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.enableVertexAttribArray(shaderTextureCoordAttribute);
     gl.vertexAttribPointer(shaderTextureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform1i(shader.shaderSampler, 0); // binds to texture unit 0
+  }
+
+  static activateNormalMapShader(gl, shader) {
+    gl.uniform1i(shader.normalSampler, 1); // binds to texture unit 1
   }
 
   static activateLight(gl, shaderLight, light, camera) {
@@ -529,6 +554,7 @@ export class RenderUtils {
 
   static activateTexture(gl, textureInfo) {
     // Binds our texture reference to the current webGL texture functionality
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
     // To prevent texture wrappings
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -540,6 +566,18 @@ export class RenderUtils {
     //     do the following:
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  }
+
+  static activateNormalMap(gl, textureInfo) {
+    // Binds our texture reference to the current webGL texture functionality
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
+    // To prevent texture wrappings
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // Handles how magnification and minimization filters will work.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   }
 
   static cleanUpBuffer(gl, buffer) {
@@ -787,18 +825,33 @@ export class ShaderUtils {
       fragmentShaderSource: textureFragmentShader,
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
-
-    const lights = [
-      ShaderUtils.initializeShaderLight(gl, shader, 0),
-      ShaderUtils.initializeShaderLight(gl, shader, 1),
-      ShaderUtils.initializeShaderLight(gl, shader, 2),
-      ShaderUtils.initializeShaderLight(gl, shader, 3),
-    ];
+    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
 
     return {
       ...shader,
-      lights,
+      lights: [],
+      shaderSampler,
       shaderTextureCoordAttribute,
+    };
+  }
+
+  static createNormalMapShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: textureVertexShader,
+      fragmentShaderSource: illuminationFragmentShader,
+    });
+    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
+    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
+    const normalSampler = gl.getUniformLocation(shader.compiledShader, 'uNormalSampler');
+
+    return {
+      ...shader,
+      lights: [],
+      shaderSampler,
+      shaderTextureCoordAttribute,
+      normalSampler,
     };
   }
 

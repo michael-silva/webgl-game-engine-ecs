@@ -14,10 +14,11 @@ export const CameraViewport = Object.freeze({
 
 export class BackgroundComponent {
   constructor({
-    type, texture, position, size, color,
+    type, texture, position, size, color, normalMap,
   } = {}) {
     this.type = type || BackgroundTypes.Normal;
     this.texture = texture;
+    this.normalMap = normalMap;
     this.position = position;
     this.size = size;
     this.color = color || [0.8, 0.8, 0.8, 1];

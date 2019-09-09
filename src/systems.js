@@ -5,11 +5,15 @@ import { Color, RenderUtils, FontUtils } from './utils';
 // @component
 export class RenderComponent {
   constructor({
-    color = Color.White, texture, textureAsset, sprite,
+    color = Color.White, texture,
+    textureAsset, sprite,
+    normalMap, normapMapAsset,
   } = {}) {
     this.color = color;
     this.texture = texture;
     this.textureAsset = textureAsset;
+    this.normalMap = normalMap;
+    this.normapMapAsset = normapMapAsset;
     this.sprite = sprite;
   }
 }

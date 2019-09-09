@@ -2,14 +2,16 @@ import {
   BackgroundComponent, WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '../src/camera';
-import { Minion, Hero } from './objects';
+import {
+  Rectangle, MinionMap, HeroMap,
+} from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
   KeyboardRotationSystem, MovementSystem,
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { GameObject, Light } from '../src';
-import { TextComponent } from '../src/systems';
+import { TextComponent, TransformComponent } from '../src/systems';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {
@@ -54,12 +56,15 @@ export default (game) => {
     position: [50, 35],
     // position: [0, 0],
     texture: './assets/images/bg.png',
+    normalMap: './assets/images/bg_normal.png',
   }));
   scene.addCamera(camera);
 
   scene.setResources([
     './assets/images/bg.png',
+    './assets/images/bg_normal.png',
     './assets/images/minion_sprite.png',
+    './assets/images/minion_sprite_normal.png',
     './assets/fonts/system-default-font.fnt',
   ]);
 
@@ -97,13 +102,30 @@ export default (game) => {
   });
   scene.addLight(light4);
 
+  const block1 = new Rectangle({
+    color: [1, 0, 0, 1],
+    transform: new TransformComponent({
+      size: [5, 5],
+      position: [30, 50],
+    }),
+  });
+  scene.addEntity(block1);
 
-  const minionLeft = new Minion(30, 30);
+  const block2 = new Rectangle({
+    color: [0, 1, 0, 1],
+    transform: new TransformComponent({
+      size: [5, 5],
+      position: [70, 50],
+    }),
+  });
+  scene.addEntity(block2);
+
+  const minionLeft = new MinionMap({ position: [17, 15] });
   scene.addEntity(minionLeft);
-  const minionRight = new Minion(70, 30);
+  const minionRight = new MinionMap({ position: [87, 15], noMap: true });
   scene.addEntity(minionRight);
 
-  const hero = new Hero();
+  const hero = new HeroMap();
   hero.components.push(new RotationKeysComponent({
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,

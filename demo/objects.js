@@ -81,6 +81,33 @@ export class Minion extends GameObject {
   }
 }
 
+export class MinionMap extends GameObject {
+  constructor({ position: [x, y], noMap }) {
+    super();
+    this.components.push(new RenderComponent({
+      color: [1, 1, 1, 0],
+      texture: './assets/images/minion_sprite.png',
+      normalMap: noMap ? null : './assets/images/minion_sprite_normal.png',
+      sprite: {
+        position: [0, 204, 348, 512],
+        animation: Object.assign(new SpriteAnimation(), {
+          numFrames: 5,
+          width: 204,
+          height: 164,
+          top: 512,
+          left: 0,
+          animationType: AnimationType.AnimateSwing,
+          updateInterval: 30,
+        }),
+      },
+    }));
+    this.components.push(new TransformComponent({
+      position: [x, y],
+      size: [18, 14.4],
+    }));
+  }
+}
+
 export class Hero extends GameObject {
   constructor() {
     super();
@@ -92,6 +119,29 @@ export class Hero extends GameObject {
     this.components.push(new TransformComponent({
       position: [35, 50],
       size: [9, 12],
+    }));
+    this.components.push(new MovementComponent({ speed: 0.3 }));
+    this.components.push(new MovementKeysComponent({
+      right: KeyboardKeys.D,
+      left: KeyboardKeys.A,
+      up: KeyboardKeys.W,
+      down: KeyboardKeys.S,
+    }));
+  }
+}
+
+export class HeroMap extends GameObject {
+  constructor() {
+    super();
+    this.components.push(new RenderComponent({
+      color: [1, 1, 1, 0],
+      texture: './assets/images/minion_sprite.png',
+      normalMap: './assets/images/minion_sprite_normal.png',
+      sprite: { position: [0, 120, 0, 180] },
+    }));
+    this.components.push(new TransformComponent({
+      position: [15, 50],
+      size: [18, 24],
     }));
     this.components.push(new MovementComponent({ speed: 0.3 }));
     this.components.push(new MovementKeysComponent({

@@ -4,7 +4,8 @@ import {
 } from './utils';
 import { TransformComponent, RenderComponent, TextComponent } from './systems';
 import {
-  WorldCoordinateComponent, ViewportComponent, BackgroundComponent, BackgroundTypes, CameraViewport,
+  WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+  BackgroundTypes, CameraViewport,
 } from './camera';
 
 export class SpriteAnimation {
@@ -88,6 +89,7 @@ export class RenderEngine {
     const shaders = {
       simpleShader: ShaderUtils.createSimpleShader({ gl, buffers }),
       textureShader: ShaderUtils.createTextureShader({ gl, buffers }),
+      normalMapShader: ShaderUtils.createNormalMapShader({ gl, buffers }),
     };
 
     this.state = new RenderState({
