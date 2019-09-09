@@ -29,6 +29,7 @@ struct Light {
  float Intensity;
  bool IsOn;
 };
+uniform int  uLightsSize;
 uniform Light uLights[kGLSLuLightArraySize];
  // Maximum array of lights this shader supports
 
@@ -59,6 +60,7 @@ void main(void) {
   // now decide if we should illuminate by the light
   if (textureMapColor.a > 0.0) {
     for (int i = 0; i < kGLSLuLightArraySize; i++) {
+      if (i >= uLightsSize) break;
       if (uLights[i].IsOn) {
         lgtResults += LightEffect(uLights[i]);
       }

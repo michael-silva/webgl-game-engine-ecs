@@ -35,6 +35,7 @@ struct Light  {
     float Intensity;
     bool  IsOn;
 };
+uniform int  uLightsSize;
 uniform Light uLights[kGLSLuLightArraySize];  // Maximum array of lights this shader supports
 
 // The "varying" keyword is for signifying that the texture coordinate will be
@@ -81,7 +82,8 @@ void main(void)  {
 
     // now decide if we should illuminate by the light
     if (textureMapColor.a > 0.0) {
-        for (int i=0; i<kGLSLuLightArraySize; i++) { 
+        for (int i=0; i<kGLSLuLightArraySize; i++) {
+      if (i >= uLightsSize) break;
             if (uLights[i].IsOn) { 
                 lgtResult += LightEffect(uLights[i], N);
             }

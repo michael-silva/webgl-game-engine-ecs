@@ -430,9 +430,9 @@ export class RenderUtils {
         RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
       }
       else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
-
-      const { lights } = scenes[currentScene];
-      lights.forEach((light, i) => {
+      const scene = scenes[currentScene];
+      RenderUtils.activateLightsArray(gl, shader, scene);
+      scene.lights.forEach((light, i) => {
         if (light.isOn) {
           if (!shader.lights[i]) {
             // eslint-disable-next-line no-use-before-define
@@ -531,6 +531,10 @@ export class RenderUtils {
 
   static activateNormalMapShader(gl, shader) {
     gl.uniform1i(shader.normalSampler, 1); // binds to texture unit 1
+  }
+
+  static activateLightsArray(gl, shader, scene) {
+    gl.uniform1i(shader.lightsSize, scene.lights.length);
   }
 
   static activateLight(gl, shaderLight, light, camera) {
@@ -826,11 +830,13 @@ export class ShaderUtils {
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
     const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
+    const lightsSize = gl.getUniformLocation(shader.compiledShader, 'uLightsSize');
 
     return {
       ...shader,
-      lights: [],
       shaderSampler,
+      lightsSize,
+      lights: [],
       shaderTextureCoordAttribute,
     };
   }
@@ -845,11 +851,13 @@ export class ShaderUtils {
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
     const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
     const normalSampler = gl.getUniformLocation(shader.compiledShader, 'uNormalSampler');
+    const lightsSize = gl.getUniformLocation(shader.compiledShader, 'uLightsSize');
 
     return {
       ...shader,
-      lights: [],
       shaderSampler,
+      lightsSize,
+      lights: [],
       shaderTextureCoordAttribute,
       normalSampler,
     };
