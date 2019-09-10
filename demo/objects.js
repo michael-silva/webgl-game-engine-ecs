@@ -1,5 +1,5 @@
 import { GameObject } from '../src';
-import { RenderComponent, TransformComponent } from '../src/systems';
+import { RenderComponent, TransformComponent, Material } from '../src/systems';
 import { MovementComponent, MovementKeysComponent } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { SpriteAnimation } from '../src/render-system';
@@ -138,6 +138,7 @@ export class HeroMap extends GameObject {
       texture: './assets/images/minion_sprite.png',
       normalMap: './assets/images/minion_sprite_normal.png',
       sprite: { position: [0, 120, 0, 180] },
+      material: new Material(),
     }));
     this.components.push(new TransformComponent({
       position: [15, 50],

@@ -14,12 +14,14 @@ export const CameraViewport = Object.freeze({
 
 export class BackgroundComponent {
   constructor({
-    type, texture, position, size, color, normalMap,
+    type, texture, position, size, color,
+    normalMap, material,
   } = {}) {
     this.type = type || BackgroundTypes.Normal;
     this.texture = texture;
     this.normalMap = normalMap;
     this.position = position;
+    this.material = material;
     this.size = size;
     this.color = color || [0.8, 0.8, 0.8, 1];
   }
@@ -57,6 +59,8 @@ export class PerRenderCache {
 
   // Lower-left corner of camera in WC
   orgY = 1;
+
+  posInPixelSpace = [0, 0, 0];
 }
 
 
@@ -65,6 +69,8 @@ export class CameraEntity {
 
   constructor() {
     this.renderCache = new PerRenderCache();
+    // This is for illumination computation
+    this.cameraZ = 10;
     // transformation matrices
     this.viewMatrix = mat4.create();
     this.projMatrix = mat4.create();

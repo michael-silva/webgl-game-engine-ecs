@@ -5,6 +5,7 @@ import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
+import lightFragmentShader from './GLSLShaders/LightFS.glsl';
 import illuminationFragmentShader from './GLSLShaders/IlluminationFS.glsl';
 import { CameraViewport, ViewportComponent } from './camera';
 
@@ -211,6 +212,14 @@ export class CameraUtils {
     return z * camera.renderCache.wcToPixelRatio;
   }
 
+  static wcDirToPixel(camera, d) { // d is a vec3 direction in WC
+    // Convert the position to pixel space
+    const x = d[0] * camera.renderCache.wcToPixelRatio;
+    const y = d[1] * camera.renderCache.wcToPixelRatio;
+    const z = d[2];
+    return vec3.fromValues(x, y, z);
+  }
+
   static wcSizeToPixel(camera, s) {
     return (s * camera.renderCache.wcToPixelRatio) + 0.5;
   }
@@ -234,6 +243,12 @@ export const AnimationType = Object.freeze({
   AnimateRight: 0, // Animate from left to right, then restart to left
   AnimateLeft: 1, // Animate from right to left, then restart to right
   AnimateSwing: 2, // Animate first left to right, then animates backwards
+});
+
+export const LightType = Object.freeze({
+  Point: 0,
+  DirectionalLight: 1,
+  SpotLight: 2,
 });
 
 export class RenderUtils {
@@ -400,7 +415,8 @@ export class RenderUtils {
     ];
   }
 
-  static selectShader(shaders, textureAsset, { normalMap }) {
+  static selectShader(shaders, textureAsset, { normalMap, material }) {
+    if (textureAsset && material) return shaders.materialShader;
     if (textureAsset && normalMap) return shaders.normalMapShader;
     if (textureAsset) return shaders.textureShader;
     return shaders.simpleShader;
@@ -412,7 +428,8 @@ export class RenderUtils {
     const { gl, buffers, shaders } = game.renderState;
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
     const {
-      color, texture, sprite, normalMap,
+      color, texture, sprite,
+      normalMap, material,
     } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
     const shader = RenderUtils.selectShader(shaders, textureAsset, renderable);
@@ -438,7 +455,12 @@ export class RenderUtils {
             // eslint-disable-next-line no-use-before-define
             shader.lights[i] = ShaderUtils.initializeShaderLight(gl, shader, i);
           }
+          // if (material) {
+          //  RenderUtils.activateMaterialLight(gl, shader.lights[i], light, camera);
+          // }
+          // else {
           RenderUtils.activateLight(gl, shader.lights[i], light, camera);
+          // }
         }
       });
 
@@ -447,6 +469,9 @@ export class RenderUtils {
         const normalMapAsset = renderable.normalMapAsset || resourceMap[normalMap].asset;
         RenderUtils.activateNormalMapShader(gl, shader);
         RenderUtils.activateNormalMap(gl, normalMapAsset);
+        if (material) {
+          RenderUtils.activateMaterial(gl, shader, material, camera);
+        }
       }
     }
 
@@ -533,6 +558,15 @@ export class RenderUtils {
     gl.uniform1i(shader.normalSampler, 1); // binds to texture unit 1
   }
 
+  static activateMaterial(gl, shader, material, camera) {
+    gl.uniform4fv(shader.materialAmbient, material.ambient);
+    gl.uniform4fv(shader.materialDiffuse, material.diffuse);
+    gl.uniform4fv(shader.materialSpecular, material.specular);
+    gl.uniform1f(shader.materialShininess, material.shininess);
+
+    gl.uniform3fv(shader.cameraPosition, camera.renderCache.posInPixelSpace);
+  }
+
   static activateLightsArray(gl, shader, scene) {
     gl.uniform1i(shader.lightsSize, scene.lights.length);
   }
@@ -548,6 +582,41 @@ export class RenderUtils {
       gl.uniform1f(shaderLight.lightNear, ic);
       gl.uniform1f(shaderLight.lightFar, oc);
       gl.uniform1f(shaderLight.lightIntensity, light.intensity);
+    }
+  }
+
+  static activateMaterialLight(gl, shaderLight, light, camera) {
+    gl.uniform1i(shaderLight.lightOn, light.isOn);
+    if (light.isOn) {
+      const p = CameraUtils.wcPosToPixel(camera, light.position);
+      const ic = CameraUtils.wcSizeToPixel(camera, light.near);
+      const oc = CameraUtils.wcSizeToPixel(camera, light.far);
+
+      gl.uniform4fv(shaderLight.lightColor, light.color);
+      gl.uniform4fv(shaderLight.lightPosition, vec4.fromValues(p[0], p[1], p[2], 1));
+      gl.uniform1f(shaderLight.lightCosInner, 0);
+      gl.uniform1f(shaderLight.lightCosOuter, 0);
+      gl.uniform1f(shaderLight.lightDropOff, 0);
+      gl.uniform1f(shaderLight.lightNear, ic);
+      gl.uniform1f(shaderLight.lightFar, oc);
+      gl.uniform1f(shaderLight.lightIntensity, light.intensity);
+      gl.uniform1i(shaderLight.lightLightType, light.lightType);
+
+      if (light.lightType === LightType.PointLight) {
+        gl.uniform3fv(shaderLight.lightDirection, vec3.fromValues(0, 0, 0));
+      }
+      else {
+        // either spot or directional lights: must compute direction
+        const d = CameraUtils.wcDirToPixel(camera, light.direction);
+        gl.uniform3fv(shaderLight.lightDirection, vec3.fromValues(d[0], d[1], d[2]));
+        if (light.lightType === LightType.SpotLight) {
+          // stores cosine of half of inner angle
+          gl.uniform1f(shaderLight.lightCosInner, Math.cos(0.5 * light.cosInner));
+          // stores cosine of half of outer cone
+          gl.uniform1f(shaderLight.lightCosOuter, Math.cos(0.5 * light.cosOuter));
+          gl.uniform1f(shaderLight.lightDropOff, light.dropOff);
+        }
+      }
     }
   }
 
@@ -846,7 +915,7 @@ export class ShaderUtils {
       gl,
       buffer: buffers.vertexBuffer,
       vertexShaderSource: textureVertexShader,
-      fragmentShaderSource: illuminationFragmentShader,
+      fragmentShaderSource: lightFragmentShader,
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
     const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
@@ -863,6 +932,40 @@ export class ShaderUtils {
     };
   }
 
+  static createMaterialShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: textureVertexShader,
+      fragmentShaderSource: illuminationFragmentShader,
+    });
+    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
+    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
+    const normalSampler = gl.getUniformLocation(shader.compiledShader, 'uNormalSampler');
+    const lightsSize = gl.getUniformLocation(shader.compiledShader, 'uLightsSize');
+
+    const materialAmbient = gl.getUniformLocation(shader.compiledShader, 'uMaterial.Ka');
+    const materialDiffuse = gl.getUniformLocation(shader.compiledShader, 'uMaterial.Kd');
+    const materialSpecular = gl.getUniformLocation(shader.compiledShader, 'uMaterial.Ks');
+    const materialShininess = gl.getUniformLocation(shader.compiledShader, 'uMaterial.Shininess');
+
+    const cameraPosition = gl.getUniformLocation(shader.compiledShader, 'uCameraPosition');
+
+    return {
+      ...shader,
+      shaderSampler,
+      lightsSize,
+      lights: [],
+      materialAmbient,
+      materialDiffuse,
+      materialShininess,
+      materialSpecular,
+      cameraPosition,
+      shaderTextureCoordAttribute,
+      normalSampler,
+    };
+  }
+
   static initializeShaderLight(gl, shader, index) {
     const lightColor = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Color`);
     const lightPosition = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Position`);
@@ -873,6 +976,34 @@ export class ShaderUtils {
 
     return {
       lightColor,
+      lightFar,
+      lightNear,
+      lightIntensity,
+      lightOn,
+      lightPosition,
+    };
+  }
+
+  static initializeMaterialShaderLight(gl, shader, index) {
+    const lightColor = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Color`);
+    const lightDirection = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Direction`);
+    const lightPosition = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Position`);
+    const lightNear = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Near`);
+    const lightFar = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Far`);
+    const lightCosInner = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].CosInner`);
+    const lightCosOuter = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].CosOuter`);
+    const lightIntensity = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Intensity`);
+    const lightDropOff = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].DropOff`);
+    const lightLightType = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].LightType`);
+    const lightOn = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].IsOn`);
+
+    return {
+      lightColor,
+      lightDirection,
+      lightCosInner,
+      lightCosOuter,
+      lightDropOff,
+      lightLightType,
       lightFar,
       lightNear,
       lightIntensity,

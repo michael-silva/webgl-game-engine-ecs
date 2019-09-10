@@ -2,12 +2,24 @@ import { ResourceLoader, ImageLoader } from './resources-system';
 import { Color, RenderUtils, FontUtils } from './utils';
 
 
+export class Material {
+  constructor({
+    shininess, ambient, specular, diffuse,
+  } = {}) {
+    this.ambient = ambient || [0, 0, 0, 0];
+    this.specular = specular || [0.2, 0.2, 0.2, 1];
+    this.diffuse = diffuse || [1, 1, 1, 1];
+    this.shininess = shininess || 20;
+  }
+}
+
 // @component
 export class RenderComponent {
   constructor({
     color = Color.White, texture,
     textureAsset, sprite,
     normalMap, normapMapAsset,
+    material,
   } = {}) {
     this.color = color;
     this.texture = texture;
@@ -15,6 +27,7 @@ export class RenderComponent {
     this.normalMap = normalMap;
     this.normapMapAsset = normapMapAsset;
     this.sprite = sprite;
+    this.material = material;
   }
 }
 

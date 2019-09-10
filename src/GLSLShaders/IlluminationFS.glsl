@@ -13,6 +13,17 @@ uniform vec4 uPixelColor;
 uniform vec4 uGlobalAmbientColor; // this is shared globally
 uniform float uGlobalAmbientIntensity; 
 
+// for supporting a simple Phong-like illumination model
+uniform vec3 uCameraPosition; // for computing the V-vector
+// material properties
+struct Material {
+    vec4 Ka;    // simple boosting of color
+    vec4 Kd;    // Diffuse 
+    vec4 Ks;    // Specular
+    float Shininess; // this is the "n"
+};
+uniform Material uMaterial;
+
 // Light information
 #define kGLSLuLightArraySize 100
     // GLSL Fragment shader requires loop control
@@ -42,11 +53,9 @@ uniform Light uLights[kGLSLuLightArraySize];  // Maximum array of lights this sh
 // interpolated and thus varies. 
 varying vec2 vTexCoord;
 
-vec4 LightEffect(Light lgt, vec3 N) {
-    vec4 result = vec4(0);
+// Computes the L-vector, and returns attenuation
+float LightAttenuation(Light lgt, float dist) {
     float atten = 0.0;
-    vec3 L = lgt.Position.xyz - gl_FragCoord.xyz;
-    float dist = length(L);
     if (dist <= lgt.Far) {
         if (dist <= lgt.Near)
             atten = 1.0;  //  no attenuation
@@ -56,13 +65,29 @@ vec4 LightEffect(Light lgt, vec3 N) {
             float d = lgt.Far - lgt.Near;
             atten = smoothstep(0.0, 1.0, 1.0-(n*n)/(d*d)); // blended attenuation
         }
-        L = L / dist; // To normalize L
-              // Not calling the normalize() function to avoid re-computing
-              // the "dist". This is computationally more efficient.
-        float NdotL = max(0.0, dot(N, L));   
-        atten *= NdotL;
+        
     }
-    result = atten * lgt.Intensity * lgt.Color;
+    return atten;
+}
+
+vec4 SpecularResult(vec3 N, vec3 L) {
+    vec3 V = normalize(uCameraPosition - gl_FragCoord.xyz);
+    vec3 H = (L + V) * 0.5;
+    return uMaterial.Ks * pow(max(0.0, dot(N, H)), uMaterial.Shininess);
+}
+
+vec4 DiffuseResult(vec3 N, vec3 L, vec4 textureMapColor) {
+    return uMaterial.Kd * max(0.0, dot(N, L)) * textureMapColor;
+}
+
+vec4 ShadedResult(Light lgt, vec3 N, vec4 textureMapColor) {
+    vec3 L = lgt.Position.xyz - gl_FragCoord.xyz; 
+    float dist = length(L);
+    L = L / dist;
+    float atten = LightAttenuation(lgt, dist);
+    vec4  diffuse = DiffuseResult(N, L, textureMapColor);
+    vec4  specular = SpecularResult(N, L);
+    vec4 result = atten * lgt.Intensity * lgt.Color * (diffuse + specular);
     return result;
 }
 
@@ -78,22 +103,21 @@ void main(void)  {
     // 
     vec3 N = normalize(normalMap.xyz);
    
-    vec4 lgtResult = uGlobalAmbientColor * uGlobalAmbientIntensity;
+    vec4 shadedResult = uMaterial.Ka + (textureMapColor  * uGlobalAmbientColor * uGlobalAmbientIntensity);
 
     // now decide if we should illuminate by the light
     if (textureMapColor.a > 0.0) {
         for (int i=0; i<kGLSLuLightArraySize; i++) {
-      if (i >= uLightsSize) break;
+            if (i >= uLightsSize) break;
             if (uLights[i].IsOn) { 
-                lgtResult += LightEffect(uLights[i], N);
+                shadedResult += ShadedResult(uLights[i], N, textureMapColor);
             }
         }
     }
-    lgtResult *= textureMapColor;
 
     // tint the textured area, and leave transparent area as defined by the texture
-    vec3 r = vec3(lgtResult) * (1.0-uPixelColor.a) + vec3(uPixelColor) * uPixelColor.a;
-    vec4 result = vec4(r, textureMapColor.a);
+    vec3 tintResult = vec3(shadedResult) * (1.0-uPixelColor.a) + vec3(uPixelColor) * uPixelColor.a;
+    vec4 result = vec4(tintResult, textureMapColor.a);
 
     gl_FragColor = result;
 }

@@ -7,6 +7,7 @@ import {
 } from './systems';
 import { RenderEngine } from './render-system';
 import { InputEngine } from './input-system';
+import { LightType } from './utils';
 
 // @component
 export class GameWorldEntity {
@@ -41,15 +42,24 @@ export class GlobalLight {
   ambientIntensity = 1;
 }
 
+
 export class Light {
   constructor({
     color, position = [0, 0],
     near, far, intensity,
+    lightType, dropOff,
+    cosInner, cosOuter,
   }) {
     this.color = color || [0.1, 0.1, 0.1, 1]; // light color
+    // this.color = color || [1, 1, 1, 1]; // light color
     this.position = [...position, 5]; // light position in WC
+    this.direction = [0, 0, 5]; // light position in WC
     this.near = near || 5; // within Near is fully lighted
     this.far = far || 10; // farther than Far is not lighted
+    this.cosInner = cosInner || 0.1;
+    this.cosOuter = cosOuter || 0.3;
+    this.dropOff = dropOff || 1;
+    this.lightType = lightType || LightType.SpotLight;
     this.intensity = intensity || 1;
     this.isOn = true;
   }

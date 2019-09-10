@@ -11,7 +11,9 @@ import {
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { GameObject, Light } from '../src';
-import { TextComponent, TransformComponent } from '../src/systems';
+import {
+  TextComponent, TransformComponent, Material, RenderComponent,
+} from '../src/systems';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {
@@ -38,6 +40,111 @@ class GlobalLightControlSystem {
   }
 }
 
+class ToogleMaterialComponent {
+  constructor({ material, key }) {
+    this.key = key;
+    this.material = material;
+  }
+}
+
+class ToogleMaterialSystem {
+  run(game, { scenes, currentScene, inputState }) {
+    const { cameras } = scenes[currentScene];
+    const { keyboard } = inputState;
+    cameras.forEach((camera) => {
+      const background = camera.components.find((c) => c instanceof BackgroundComponent);
+      const toggleMaterial = camera.components.find((c) => c instanceof ToogleMaterialComponent);
+      if (!background || !toggleMaterial) return;
+      if (keyboard.clickedKeys[toggleMaterial.key]) {
+        background.material = background.material ? null : toggleMaterial.material;
+      }
+    });
+  }
+}
+
+class TrackEntityMaterialComponent {
+  constructor({ entityId }) {
+    this.entityId = entityId;
+  }
+}
+
+class TrackMaterialSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const track = e.components.find((c) => c instanceof TrackEntityMaterialComponent);
+      const text = e.components.find((c) => c instanceof TextComponent);
+      if (!text || !track) return;
+      const trackEntity = entities.find((e2) => e2.id === track.entityId);
+      if (!trackEntity) return;
+      const { material } = trackEntity.components.find((c) => c instanceof RenderComponent);
+      text.content = `n(${material.shininess.toFixed(2)}) ${this._materialArraysToString(material)}`;
+    });
+  }
+
+  _materialArraysToString({ ambient, diffuse, specular }) {
+    return `A(${this._arrayToString(ambient)}) D(${this._arrayToString(diffuse)}) S(${this._arrayToString(specular)})`;
+  }
+
+  _arrayToString([a, b, c]) {
+    return `${a.toFixed(1)},${b.toFixed(1)},${c.toFixed(1)}`;
+  }
+}
+
+class MaterialControlComponent {
+  constructor(params) {
+    Object.assign(this, params);
+  }
+}
+
+class MaterialControlSystem {
+  _channel = 0
+
+  run({ entities }, { inputState }) {
+    const { keyboard } = inputState;
+    entities.forEach((e) => {
+      const control = e.components.find((c) => c instanceof MaterialControlComponent);
+      const renderable = e.components.find((c) => c instanceof RenderComponent);
+      if (!control || !renderable) return;
+      const delta = 0.01;
+      if (keyboard.pressedKeys[control.shininessInc]) {
+        renderable.material.shininess += delta;
+      }
+      if (keyboard.pressedKeys[control.shininessDec]) {
+        renderable.material.shininess -= delta;
+      }
+      if (keyboard.pressedKeys[control.changeChannel]) {
+        this._channel++;
+        if (this._channel > 2) this._channel = 0;
+      }
+      const channel = this._selectChannel(renderable.material);
+      if (keyboard.pressedKeys[control.channel0Inc]) {
+        channel[0] += delta;
+      }
+      if (keyboard.pressedKeys[control.channel0Dec]) {
+        channel[0] -= delta;
+      }
+      if (keyboard.pressedKeys[control.channel1Inc]) {
+        channel[1] += delta;
+      }
+      if (keyboard.pressedKeys[control.channel1Dec]) {
+        channel[1] -= delta;
+      }
+      if (keyboard.pressedKeys[control.channel2Inc]) {
+        channel[2] += delta;
+      }
+      if (keyboard.pressedKeys[control.channel2Dec]) {
+        channel[2] -= delta;
+      }
+    });
+  }
+
+  _selectChannel(material) {
+    if (this._channel === 0) return material.ambient;
+    if (this._channel === 1) return material.diffuse;
+    return material.specular;
+  }
+}
+
 export default (game) => {
   const scene = game.createScene();
   scene.setGlobalLight({ ambientColor: [0.3, 0.3, 0.3, 1] });
@@ -49,6 +156,11 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 640, 480],
   }));
+  const material = new Material({
+    shininess: 100,
+    specular: [1, 0, 0, 1],
+  });
+  camera.components.push(new ToogleMaterialComponent({ key: KeyboardKeys.Space, material }));
   camera.components.push(new BackgroundComponent({
     // type: BackgroundTypes.Fixed,
     color: [0.8, 0.8, 0.8, 0],
@@ -57,6 +169,7 @@ export default (game) => {
     // position: [0, 0],
     texture: './assets/images/bg.png',
     normalMap: './assets/images/bg_normal.png',
+    // material,
   }));
   scene.addCamera(camera);
 
@@ -73,7 +186,7 @@ export default (game) => {
     near: 20,
     far: 50,
     intensity: 5.5,
-    position: [21, 58, 5],
+    position: [21, 58, 2],
     color: [0.2, 0.2, 0.8, 1],
   });
   scene.addLight(light1);
@@ -81,8 +194,8 @@ export default (game) => {
     near: 20,
     far: 45,
     intensity: 2.8,
-    position: [24, 24, 8],
-    color: [0.4, 0.7, 0.4, 1],
+    position: [43, 34, 8],
+    color: [0.4, 1.0, 0.4, 1],
   });
   scene.addLight(light2);
   const light3 = new Light({
@@ -98,7 +211,7 @@ export default (game) => {
     far: 40,
     intensity: 3,
     position: [72, 57, 6],
-    color: [0.8, 0.6, 0.6, 1],
+    color: [0.6, 0.8, 0.8, 1],
   });
   scene.addLight(light4);
 
@@ -126,6 +239,17 @@ export default (game) => {
   scene.addEntity(minionRight);
 
   const hero = new HeroMap();
+  hero.components.push(new MaterialControlComponent({
+    shininessInc: KeyboardKeys.Z,
+    shininessDec: KeyboardKeys.X,
+    channel0Inc: KeyboardKeys.C,
+    channel0Dec: KeyboardKeys.V,
+    channel1Inc: KeyboardKeys.B,
+    channel1Dec: KeyboardKeys.N,
+    channel2Inc: KeyboardKeys.M,
+    channel2Dec: KeyboardKeys.J,
+    changeChannel: KeyboardKeys.Enter,
+  }));
   hero.components.push(new RotationKeysComponent({
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
@@ -133,6 +257,7 @@ export default (game) => {
   scene.addEntity(hero);
 
   const message = new GameObject();
+  message.components.push(new TrackEntityMaterialComponent({ entityId: hero.id }));
   message.components.push(
     new TextComponent({
       content: 'Status Message',
@@ -148,4 +273,7 @@ export default (game) => {
   scene.use(new KeyboardRotationSystem());
   scene.use(new MovementSystem());
   scene.use(new GlobalLightControlSystem());
+  scene.use(new ToogleMaterialSystem());
+  scene.use(new MaterialControlSystem());
+  scene.use(new TrackMaterialSystem());
 };

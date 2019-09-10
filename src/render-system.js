@@ -90,6 +90,7 @@ export class RenderEngine {
       simpleShader: ShaderUtils.createSimpleShader({ gl, buffers }),
       textureShader: ShaderUtils.createTextureShader({ gl, buffers }),
       normalMapShader: ShaderUtils.createNormalMapShader({ gl, buffers }),
+      materialShader: ShaderUtils.createMaterialShader({ gl, buffers }),
     };
 
     this.state = new RenderState({
@@ -192,5 +193,13 @@ export class RenderEngine {
     camera.renderCache.orgX = worldCoordinate.center[0] - (wcWidth / 2);
     // eslint-disable-next-line no-param-reassign
     camera.renderCache.orgY = worldCoordinate.center[1] - (wcHeight / 2);
+
+    const p = CameraUtils.wcPosToPixel(camera, worldCoordinate.center);
+    // eslint-disable-next-line no-param-reassign
+    camera.renderCache.posInPixelSpace = [
+      p[0],
+      p[1],
+      CameraUtils.fakeZInPixelSpace(camera, camera.cameraZ),
+    ];
   }
 }
