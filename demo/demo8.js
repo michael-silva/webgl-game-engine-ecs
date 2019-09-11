@@ -3,7 +3,7 @@ import {
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
-  Rectangle, MinionMap, HeroMap,
+  Rectangle, MinionMap, HeroMap, Hero,
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
@@ -14,6 +14,7 @@ import { GameObject, Light } from '../src';
 import {
   TextComponent, TransformComponent, Material, RenderComponent,
 } from '../src/systems';
+import { LightType } from '../src/utils';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {
@@ -169,7 +170,7 @@ export default (game) => {
     // position: [0, 0],
     texture: './assets/images/bg.png',
     normalMap: './assets/images/bg_normal.png',
-    // material,
+    material,
   }));
   scene.addCamera(camera);
 
@@ -183,35 +184,55 @@ export default (game) => {
 
   // the light
   const light1 = new Light({
-    near: 20,
-    far: 50,
-    intensity: 5.5,
-    position: [21, 58, 2],
-    color: [0.2, 0.2, 0.8, 1],
+    near: 8,
+    far: 20,
+    cosInner: 0.1,
+    cosOuter: 0.2,
+    dropOff: 1,
+    intensity: 5,
+    lightType: LightType.PointLight,
+    direction: [0, 0, -1],
+    position: [15, 50, 5],
+    color: [0.6, 1.0, 0.0, 1],
   });
   scene.addLight(light1);
   const light2 = new Light({
-    near: 20,
-    far: 45,
-    intensity: 2.8,
-    position: [43, 34, 8],
-    color: [0.4, 1.0, 0.4, 1],
+    near: 500, // near anf far distances: essentially switch this off
+    far: 500,
+    cosInner: 0.1,
+    cosOuter: 0.2,
+    dropOff: 1,
+    intensity: 2,
+    lightType: LightType.DirectionalLight,
+    direction: [-0.2, -0.2, -1],
+    position: [15, 50, 4],
+    color: [0.7, 0.7, 0.0, 1],
   });
   scene.addLight(light2);
   const light3 = new Light({
-    near: 10,
-    far: 35,
-    intensity: 3,
-    position: [66, 23, 10],
-    color: [0.7, 0.7, 0.7, 1],
+    near: 100,
+    far: 100,
+    cosInner: 1.65,
+    cosOuter: 1.7,
+    dropOff: 1.2,
+    intensity: 5,
+    lightType: LightType.SpotLight,
+    direction: [-0.07, 0, -1],
+    position: [80, 18, 10],
+    color: [0.5, 0.5, 0.5, 1],
   });
   scene.addLight(light3);
   const light4 = new Light({
-    near: 15,
-    far: 40,
-    intensity: 3,
-    position: [72, 57, 6],
-    color: [0.6, 0.8, 0.8, 1],
+    near: 100,
+    far: 100,
+    cosInner: 1.9,
+    cosOuter: 2,
+    dropOff: 1,
+    intensity: 2,
+    lightType: LightType.SpotLight,
+    direction: [0.0, 0.03, -1],
+    position: [64, 43, 10],
+    color: [0.8, 0.8, 0.2, 1],
   });
   scene.addLight(light4);
 
@@ -255,6 +276,18 @@ export default (game) => {
     right: KeyboardKeys.E,
   }));
   scene.addEntity(hero);
+
+  const hero2 = new Hero({
+    position: [80, 50],
+    size: [18, 24],
+    keys: {
+      left: KeyboardKeys.Left,
+      right: KeyboardKeys.Right,
+      up: KeyboardKeys.Up,
+      down: KeyboardKeys.Down,
+    },
+  });
+  scene.addEntity(hero2);
 
   const message = new GameObject();
   message.components.push(new TrackEntityMaterialComponent({ entityId: hero.id }));

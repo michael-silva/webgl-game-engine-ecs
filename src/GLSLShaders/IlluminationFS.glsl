@@ -24,8 +24,7 @@ struct Material {
 };
 uniform Material uMaterial;
 
-// Light information
-#define kGLSLuLightArraySize 100
+#define kGLSLuLightArraySize 50
     // GLSL Fragment shader requires loop control
     // variable to be a constant number. This number 4
     // says, this fragment shader will _ALWAYS_ process
@@ -38,14 +37,29 @@ uniform Material uMaterial;
     //     kGLSLuLightArraySize
     // defined in LightShader.js file.
 
+
+#define ePointLight       0
+#define eDirectionalLight 1
+#define eSpotLight        2
+    // ******** WARNING ******
+    // The above enumerated values must be identical to 
+    // Light.eLightType values defined in Light.js
+    // ******** WARNING ******
+
 struct Light  {
-    vec4 Position;   // in pixel space!
+    vec4 Position;  // in pixel space!
+    vec3 Direction; // Light direction
     vec4 Color;
-    float Near;     // distance in pixel space
-    float Far;     // distance in pixel space
+    float Near;
+    float Far;
+    float CosInner;    // Cosine of inner cone angle for spotlight
+    float CosOuter;    // Cosine of outer cone angle for spotlight
     float Intensity;
+    float DropOff;  // for spotlight
     bool  IsOn;
+    int LightType;   // One of ePointLight, eDirectionalLight, eSpotLight
 };
+
 uniform int  uLightsSize;
 uniform Light uLights[kGLSLuLightArraySize];  // Maximum array of lights this shader supports
 
@@ -53,8 +67,22 @@ uniform Light uLights[kGLSLuLightArraySize];  // Maximum array of lights this sh
 // interpolated and thus varies. 
 varying vec2 vTexCoord;
 
-// Computes the L-vector, and returns attenuation
-float LightAttenuation(Light lgt, float dist) {
+float AngularDropOff(Light lgt, vec3 lgtDir, vec3 L) {
+    float atten = 0.0;
+    float cosL = dot(lgtDir, L);
+    float num = cosL - lgt.CosOuter;
+    if (num > 0.0) {
+        if (cosL > lgt.CosInner) 
+            atten = 1.0;
+        else {
+            float denom = lgt.CosInner - lgt.CosOuter;
+            atten = smoothstep(0.0, 1.0, pow(num/denom, lgt.DropOff));
+        }
+    }
+    return atten;
+}
+
+float DistanceDropOff(Light lgt, float dist) {
     float atten = 0.0;
     if (dist <= lgt.Far) {
         if (dist <= lgt.Near)
@@ -64,8 +92,7 @@ float LightAttenuation(Light lgt, float dist) {
             float n = dist - lgt.Near;
             float d = lgt.Far - lgt.Near;
             atten = smoothstep(0.0, 1.0, 1.0-(n*n)/(d*d)); // blended attenuation
-        }
-        
+        }   
     }
     return atten;
 }
@@ -81,20 +108,35 @@ vec4 DiffuseResult(vec3 N, vec3 L, vec4 textureMapColor) {
 }
 
 vec4 ShadedResult(Light lgt, vec3 N, vec4 textureMapColor) {
-    vec3 L = lgt.Position.xyz - gl_FragCoord.xyz; 
-    float dist = length(L);
-    L = L / dist;
-    float atten = LightAttenuation(lgt, dist);
+    float aAtten = 1.0, dAtten = 1.0;
+    vec3 lgtDir = -normalize(lgt.Direction.xyz);
+    vec3 L; // light vector
+    float dist; // distance to light
+    if (lgt.LightType == eDirectionalLight) {
+        L = lgtDir;
+    } else {
+        L = lgt.Position.xyz - gl_FragCoord.xyz;
+        dist = length(L);
+        L = L / dist;
+    }
+    if (lgt.LightType == eSpotLight) {
+        // spotlight: do angle dropoff
+        aAtten = AngularDropOff(lgt, lgtDir, L);
+    }
+    if (lgt.LightType != eDirectionalLight) {
+        // both spot and point light has distance dropoff
+        dAtten = DistanceDropOff(lgt, dist);
+    }
     vec4  diffuse = DiffuseResult(N, L, textureMapColor);
     vec4  specular = SpecularResult(N, L);
-    vec4 result = atten * lgt.Intensity * lgt.Color * (diffuse + specular);
+    vec4 result = aAtten * dAtten * lgt.Intensity * lgt.Color * (diffuse + specular);
     return result;
 }
 
 void main(void)  {
     // simple tint based on uPixelColor setting
     vec4 textureMapColor = texture2D(uSampler, vTexCoord);
-    vec4 normal = texture2D(uNormalSampler, vTexCoord);  // using the same coordinate as the sprite texture!
+    vec4 normal = texture2D(uNormalSampler, vTexCoord);
     vec4 normalMap = (2.0 * normal) - 1.0;
     
     //

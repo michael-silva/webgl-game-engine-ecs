@@ -4,7 +4,6 @@ import {
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
-import textureFragmentShader from './GLSLShaders/TextureFS.glsl';
 import lightFragmentShader from './GLSLShaders/LightFS.glsl';
 import illuminationFragmentShader from './GLSLShaders/IlluminationFS.glsl';
 import { CameraViewport, ViewportComponent } from './camera';
@@ -246,7 +245,7 @@ export const AnimationType = Object.freeze({
 });
 
 export const LightType = Object.freeze({
-  Point: 0,
+  PointLight: 0,
   DirectionalLight: 1,
   SpotLight: 2,
 });
@@ -416,8 +415,7 @@ export class RenderUtils {
   }
 
   static selectShader(shaders, textureAsset, { normalMap, material }) {
-    if (textureAsset && material) return shaders.materialShader;
-    if (textureAsset && normalMap) return shaders.normalMapShader;
+    if (textureAsset && (material || normalMap)) return shaders.materialShader;
     if (textureAsset) return shaders.textureShader;
     return shaders.simpleShader;
   }
@@ -434,7 +432,9 @@ export class RenderUtils {
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
     const shader = RenderUtils.selectShader(shaders, textureAsset, renderable);
 
-    if (textureAsset) RenderUtils.activateTexture(gl, textureAsset);
+    if (textureAsset) {
+      RenderUtils.activateTexture(gl, textureAsset);
+    }
     RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
     RenderUtils.activateGlobalLight(gl, shader, ambientColor, ambientIntensity);
     if (textureAsset) {
@@ -446,7 +446,9 @@ export class RenderUtils {
         RenderUtils.setTextureCoordinate(gl, spriteBuffer, texCoordinate);
         RenderUtils.activateTextureShader(gl, spriteBuffer, shader);
       }
-      else RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+      else {
+        RenderUtils.activateTextureShader(gl, textureBuffer, shader);
+      }
       const scene = scenes[currentScene];
       RenderUtils.activateLightsArray(gl, shader, scene);
       scene.lights.forEach((light, i) => {
@@ -455,12 +457,7 @@ export class RenderUtils {
             // eslint-disable-next-line no-use-before-define
             shader.lights[i] = ShaderUtils.initializeShaderLight(gl, shader, i);
           }
-          // if (material) {
-          //  RenderUtils.activateMaterialLight(gl, shader.lights[i], light, camera);
-          // }
-          // else {
           RenderUtils.activateLight(gl, shader.lights[i], light, camera);
-          // }
         }
       });
 
@@ -572,20 +569,6 @@ export class RenderUtils {
   }
 
   static activateLight(gl, shaderLight, light, camera) {
-    gl.uniform1i(shaderLight.lightOn, light.isOn);
-    if (light.isOn) {
-      const p = CameraUtils.wcPosToPixel(camera, light.position);
-      const ic = CameraUtils.wcSizeToPixel(camera, light.near);
-      const oc = CameraUtils.wcSizeToPixel(camera, light.far);
-      gl.uniform4fv(shaderLight.lightColor, light.color);
-      gl.uniform4fv(shaderLight.lightPosition, vec4.fromValues(p[0], p[1], p[2], 1));
-      gl.uniform1f(shaderLight.lightNear, ic);
-      gl.uniform1f(shaderLight.lightFar, oc);
-      gl.uniform1f(shaderLight.lightIntensity, light.intensity);
-    }
-  }
-
-  static activateMaterialLight(gl, shaderLight, light, camera) {
     gl.uniform1i(shaderLight.lightOn, light.isOn);
     if (light.isOn) {
       const p = CameraUtils.wcPosToPixel(camera, light.position);
@@ -895,31 +878,10 @@ export class ShaderUtils {
       gl,
       buffer: buffers.vertexBuffer,
       vertexShaderSource: textureVertexShader,
-      fragmentShaderSource: textureFragmentShader,
-    });
-    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
-    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
-    const lightsSize = gl.getUniformLocation(shader.compiledShader, 'uLightsSize');
-
-    return {
-      ...shader,
-      shaderSampler,
-      lightsSize,
-      lights: [],
-      shaderTextureCoordAttribute,
-    };
-  }
-
-  static createNormalMapShader({ gl, buffers }) {
-    const shader = ShaderUtils.createShader({
-      gl,
-      buffer: buffers.vertexBuffer,
-      vertexShaderSource: textureVertexShader,
       fragmentShaderSource: lightFragmentShader,
     });
     const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
     const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
-    const normalSampler = gl.getUniformLocation(shader.compiledShader, 'uNormalSampler');
     const lightsSize = gl.getUniformLocation(shader.compiledShader, 'uLightsSize');
 
     return {
@@ -928,7 +890,6 @@ export class ShaderUtils {
       lightsSize,
       lights: [],
       shaderTextureCoordAttribute,
-      normalSampler,
     };
   }
 
@@ -967,24 +928,6 @@ export class ShaderUtils {
   }
 
   static initializeShaderLight(gl, shader, index) {
-    const lightColor = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Color`);
-    const lightPosition = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Position`);
-    const lightNear = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Near`);
-    const lightFar = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Far`);
-    const lightIntensity = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Intensity`);
-    const lightOn = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].IsOn`);
-
-    return {
-      lightColor,
-      lightFar,
-      lightNear,
-      lightIntensity,
-      lightOn,
-      lightPosition,
-    };
-  }
-
-  static initializeMaterialShaderLight(gl, shader, index) {
     const lightColor = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Color`);
     const lightDirection = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Direction`);
     const lightPosition = gl.getUniformLocation(shader.compiledShader, `uLights[${index}].Position`);

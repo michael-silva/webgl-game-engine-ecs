@@ -89,7 +89,6 @@ export class RenderEngine {
     const shaders = {
       simpleShader: ShaderUtils.createSimpleShader({ gl, buffers }),
       textureShader: ShaderUtils.createTextureShader({ gl, buffers }),
-      normalMapShader: ShaderUtils.createNormalMapShader({ gl, buffers }),
       materialShader: ShaderUtils.createMaterialShader({ gl, buffers }),
     };
 

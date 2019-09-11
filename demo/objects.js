@@ -109,7 +109,7 @@ export class MinionMap extends GameObject {
 }
 
 export class Hero extends GameObject {
-  constructor() {
+  constructor({ keys = {}, position, size } = {}) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -117,8 +117,8 @@ export class Hero extends GameObject {
       sprite: { position: [0, 120, 0, 180] },
     }));
     this.components.push(new TransformComponent({
-      position: [35, 50],
-      size: [9, 12],
+      position: position || [35, 50],
+      size: size || [9, 12],
     }));
     this.components.push(new MovementComponent({ speed: 0.3 }));
     this.components.push(new MovementKeysComponent({
@@ -126,6 +126,7 @@ export class Hero extends GameObject {
       left: KeyboardKeys.A,
       up: KeyboardKeys.W,
       down: KeyboardKeys.S,
+      ...keys,
     }));
   }
 }
