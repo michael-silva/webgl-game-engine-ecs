@@ -33,7 +33,10 @@ export class RenderComponent {
 
 // @component
 export class TransformComponent {
-  constructor({ position, size, rotationInRadians } = {}) {
+  constructor({
+    position, z, size, rotationInRadians,
+  } = {}) {
+    this.z = z || 0;
     this.position = position || [0, 0];
     this.size = size || [1, 1];
     this.rotationInRadians = rotationInRadians || 0;

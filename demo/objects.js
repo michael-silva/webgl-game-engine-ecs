@@ -82,7 +82,9 @@ export class Minion extends GameObject {
 }
 
 export class MinionMap extends GameObject {
-  constructor({ position: [x, y], noMap }) {
+  constructor({
+    position: [x, y], z, size, noMap,
+  }) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -103,13 +105,16 @@ export class MinionMap extends GameObject {
     }));
     this.components.push(new TransformComponent({
       position: [x, y],
-      size: [18, 14.4],
+      size: size || [18, 14.4],
+      z,
     }));
   }
 }
 
 export class Hero extends GameObject {
-  constructor({ keys = {}, position, size } = {}) {
+  constructor({
+    keys = {}, position, size, z,
+  } = {}) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -119,6 +124,7 @@ export class Hero extends GameObject {
     this.components.push(new TransformComponent({
       position: position || [35, 50],
       size: size || [9, 12],
+      z,
     }));
     this.components.push(new MovementComponent({ speed: 0.3 }));
     this.components.push(new MovementKeysComponent({
@@ -132,7 +138,7 @@ export class Hero extends GameObject {
 }
 
 export class HeroMap extends GameObject {
-  constructor() {
+  constructor({ position, size, z } = {}) {
     super();
     this.components.push(new RenderComponent({
       color: [1, 1, 1, 0],
@@ -142,8 +148,9 @@ export class HeroMap extends GameObject {
       material: new Material(),
     }));
     this.components.push(new TransformComponent({
-      position: [15, 50],
-      size: [18, 24],
+      position: position || [15, 50],
+      size: size || [18, 24],
+      z,
     }));
     this.components.push(new MovementComponent({ speed: 0.3 }));
     this.components.push(new MovementKeysComponent({

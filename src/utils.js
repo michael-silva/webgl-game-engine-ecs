@@ -5,6 +5,8 @@ import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import lightFragmentShader from './GLSLShaders/LightFS.glsl';
+import shadowReceiverFragmentShader from './GLSLShaders/ShadowReceiverFS.glsl';
+import shadowCasterFragmentShader from './GLSLShaders/ShadowCasterFS.glsl';
 import illuminationFragmentShader from './GLSLShaders/IlluminationFS.glsl';
 import { CameraViewport, ViewportComponent } from './camera';
 
@@ -57,12 +59,14 @@ export class BoundingUtils {
 
 export class TransformUtils {
   static getXForm(transform) {
-    const { position = [0, 0], size = [1, 1], rotationInRadians = 0 } = transform;
+    const {
+      position = [0, 0], z = 0, size = [1, 1], rotationInRadians = 0,
+    } = transform;
     const [x, y] = position;
     const [width, height] = size;
     const xform = mat4.create();
     // Step E: compute the white square transform
-    mat4.translate(xform, xform, vec3.fromValues(x, y, 0.0));
+    mat4.translate(xform, xform, vec3.fromValues(x, y, z));
     mat4.rotateZ(xform, xform, rotationInRadians);
     mat4.scale(xform, xform, vec3.fromValues(width, height, 1.0));
 
@@ -127,6 +131,10 @@ export class TransformUtils {
     result.radians = rad;
 
     return result;
+  }
+
+  static get3DPosition(transform) {
+    return [...transform.position, transform.z];
   }
 }
 
@@ -252,19 +260,24 @@ export const LightType = Object.freeze({
 
 export class RenderUtils {
   static getGL(canvas) {
-    const gl = canvas.getContext('webgl', { alpha: false });
+    const gl = canvas.getContext('webgl', { alpha: false, depth: true, stencil: true });
     if (!gl) throw new Error("Your browser don't suport a WEBGL");
     // Allows transperency with textures.
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.BLEND);
     // Set images to flip the y axis to match the texture coordinate space.
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+    // make sure depth testing is enabled
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
     return gl;
   }
 
   static clearCanvas(gl, color) {
     gl.clearColor(...color);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // eslint-disable-next-line no-bitwise
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   }
 
   static initBuffers(gl) {
@@ -420,7 +433,7 @@ export class RenderUtils {
     return shaders.simpleShader;
   }
 
-  static renderEntity(game, camera, renderable, transform) {
+  static renderEntity(game, camera, renderable, transform, optShader) {
     const { resourceMap, scenes, currentScene } = game;
     const { ambientColor, ambientIntensity } = scenes[currentScene].globalLight;
     const { gl, buffers, shaders } = game.renderState;
@@ -430,7 +443,7 @@ export class RenderUtils {
       normalMap, material,
     } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
-    const shader = RenderUtils.selectShader(shaders, textureAsset, renderable);
+    const shader = optShader || RenderUtils.selectShader(shaders, textureAsset, renderable);
 
     if (textureAsset) {
       RenderUtils.activateTexture(gl, textureAsset);
@@ -449,17 +462,26 @@ export class RenderUtils {
       else {
         RenderUtils.activateTextureShader(gl, textureBuffer, shader);
       }
-      const scene = scenes[currentScene];
-      RenderUtils.activateLightsArray(gl, shader, scene);
-      scene.lights.forEach((light, i) => {
-        if (light.isOn) {
-          if (!shader.lights[i]) {
+      if (shader.lights) {
+        const scene = scenes[currentScene];
+        RenderUtils.activateLightsArray(gl, shader, scene);
+        scene.lights.forEach((light, i) => {
+          if (light.isOn) {
+            if (!shader.lights[i]) {
             // eslint-disable-next-line no-use-before-define
-            shader.lights[i] = ShaderUtils.initializeShaderLight(gl, shader, i);
+              shader.lights[i] = ShaderUtils.initializeShaderLight(gl, shader, i);
+            }
+            RenderUtils.activateLight(gl, shader.lights[i], light, camera);
           }
-          RenderUtils.activateLight(gl, shader.lights[i], light, camera);
+        });
+      }
+      else if (shader.light && shader.light.isOn) {
+        if (!shader.lightShader) {
+          // eslint-disable-next-line no-use-before-define
+          shader.lightShader = ShaderUtils.initializeShaderLight(gl, shader, 0);
         }
-      });
+        RenderUtils.activateLight(gl, shader.lightShader, shader.light, camera);
+      }
 
       if ((normalMap && resourceMap[normalMap] && resourceMap[normalMap].loaded)
         || renderable.normalMapAsset) {
@@ -475,6 +497,110 @@ export class RenderUtils {
     const xform = TransformUtils.getXForm(transform);
     gl.uniformMatrix4fv(shader.modelTransform, false, xform);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  static _computeShadowGeometry(light, caster, casterTransform, receiverTransform) {
+    // vector from light to caster
+    const lgtToCaster = vec3.create();
+    let lgtToReceiverZ;
+    let distToCaster;
+    let distToReceiver; // measured along the lgtToCaster vector
+    let scale;
+    const offset = vec3.fromValues(0, 0, 0);
+    const receiverToCasterZ = receiverTransform.z - casterTransform.z;
+
+    if (light.lightType === LightType.DirectionalLight) {
+      // Region 2: parallel projection based on the directional light
+      if ((Math.abs(light.direction[2]) < caster.verySmall)
+         || (receiverToCasterZ * light.direction[2]) < 0) {
+        return false; // direction light casting side way or
+        // caster and receiver on different sides of light in Z
+      }
+      vec3.copy(lgtToCaster, light.direction);
+      vec3.normalize(lgtToCaster, lgtToCaster);
+      distToReceiver = Math.abs(receiverToCasterZ / lgtToCaster[2]);
+      // distant measured along lgtToCaster
+      scale = Math.abs(1 / lgtToCaster[2]);
+    }
+    else {
+      // Region 3: projection from a point (point light or spot light position)
+      vec3.sub(lgtToCaster, TransformUtils.get3DPosition(casterTransform), light.position);
+      lgtToReceiverZ = receiverTransform.z - light.position[2];
+      if ((lgtToReceiverZ * lgtToCaster[2]) < 0) {
+        return null; // caster and receiver on different sides of light in Z
+      }
+      if ((Math.abs(lgtToReceiverZ) < caster.verySmall)
+          || ((Math.abs(lgtToCaster[2]) < caster.verySmall))) {
+        // alomst the same Z, can't see shadow
+        return null;
+      }
+      distToCaster = vec3.length(lgtToCaster);
+      vec3.scale(lgtToCaster, lgtToCaster, 1 / distToCaster);
+      // normalize lgtToCaster
+      distToReceiver = Math.abs(receiverToCasterZ / lgtToCaster[2]);
+      // distant measured along lgtToCaster
+      scale = (distToCaster + (distToReceiver * caster.receiverDistanceFudge))
+                 / distToCaster;
+    }
+    // Region 4: sets the cxf transform
+    vec3.scaleAndAdd(offset, TransformUtils.get3DPosition(casterTransform), lgtToCaster,
+      distToReceiver + caster.distanceFudge);
+
+    return {
+      rotationInRadians: casterTransform.rotationInRadians,
+      position: [offset[0], offset[1]],
+      z: offset[2],
+      size: [
+        casterTransform.size[0] * scale,
+        casterTransform.size[1] * scale,
+      ],
+    };
+  }
+
+  static renderShadowCaster(game, camera, receiverTransform, caster,
+    casterRenderable, casterTransform) {
+    const scene = game.scenes[game.currentScene];
+    const color = [...casterRenderable.color];
+    // eslint-disable-next-line no-param-reassign
+    casterRenderable.color = caster.shadowColor;
+
+    for (let l = 0; l < scene.lights.length; l++) {
+      const lgt = scene.lights[l];
+      const shader = game.renderState.shaders.shadowCasterShader;
+      if (lgt.isOn && lgt.castShadow) {
+        // eslint-disable-next-line no-underscore-dangle
+        const transform = RenderUtils._computeShadowGeometry(lgt, caster,
+          casterTransform, receiverTransform);
+        if (transform) {
+          // eslint-disable-next-line no-param-reassign
+          shader.light = lgt;
+          RenderUtils.renderEntity(game, camera, casterRenderable, transform, shader); // B2
+        }
+      }
+    }
+    // eslint-disable-next-line no-param-reassign
+    casterRenderable.color = [...color];
+  }
+
+  static shadowRecieverStencilOn(gl, receiver) {
+    gl.clear(gl.STENCIL_BUFFER_BIT);
+    gl.enable(gl.STENCIL_TEST);
+    gl.colorMask(false, false, false, false);
+    gl.depthMask(false);
+    gl.stencilFunc(gl.NEVER, receiver.shadowStencilBit, receiver.shadowStencilMask);
+    gl.stencilOp(gl.REPLACE, gl.KEEP, gl.KEEP);
+    gl.stencilMask(receiver.shadowStencilMask);
+  }
+
+  static shadowRecieverStencilOff(gl, receiver) {
+    gl.depthMask(gl.TRUE);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    gl.stencilFunc(gl.EQUAL, receiver.shadowStencilBit, receiver.shadowStencilMask);
+    gl.colorMask(true, true, true, true);
+  }
+
+  static shadowRecieverStencilDisable(gl) {
+    gl.disable(gl.STENCIL_TEST);
   }
 
   static updateAnimation(sprite) {
@@ -924,6 +1050,40 @@ export class ShaderUtils {
       cameraPosition,
       shaderTextureCoordAttribute,
       normalSampler,
+    };
+  }
+
+  static createShadowCasterShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: textureVertexShader,
+      fragmentShaderSource: shadowCasterFragmentShader,
+    });
+    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
+    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
+
+    return {
+      ...shader,
+      shaderSampler,
+      shaderTextureCoordAttribute,
+    };
+  }
+
+  static createShadowReceiverShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: textureVertexShader,
+      fragmentShaderSource: shadowReceiverFragmentShader,
+    });
+    const shaderTextureCoordAttribute = gl.getAttribLocation(shader.compiledShader, 'aTextureCoordinate');
+    const shaderSampler = gl.getUniformLocation(shader.compiledShader, 'uSampler');
+
+    return {
+      ...shader,
+      shaderSampler,
+      shaderTextureCoordAttribute,
     };
   }
 

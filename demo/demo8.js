@@ -15,6 +15,7 @@ import {
   TextComponent, TransformComponent, Material, RenderComponent,
 } from '../src/systems';
 import { LightType } from '../src/utils';
+import { ShadowReceiverComponent, ShadowCasterComponent } from '../src/render-system';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {
@@ -171,6 +172,7 @@ export default (game) => {
     texture: './assets/images/bg.png',
     normalMap: './assets/images/bg_normal.png',
     material,
+    shadowReceiver: new ShadowReceiverComponent(),
   }));
   scene.addCamera(camera);
 
@@ -192,7 +194,7 @@ export default (game) => {
     intensity: 5,
     lightType: LightType.PointLight,
     direction: [0, 0, -1],
-    position: [15, 50, 5],
+    position: [20, 25, 10],
     color: [0.6, 1.0, 0.0, 1],
   });
   scene.addLight(light1);
@@ -204,34 +206,34 @@ export default (game) => {
     dropOff: 1,
     intensity: 2,
     lightType: LightType.DirectionalLight,
-    direction: [-0.2, -0.2, -1],
-    position: [15, 50, 4],
+    direction: [0.4, 0.4, -1],
+    position: [15, 50, 10],
     color: [0.7, 0.7, 0.0, 1],
   });
   scene.addLight(light2);
   const light3 = new Light({
-    near: 100,
-    far: 100,
-    cosInner: 1.65,
-    cosOuter: 1.7,
+    near: 20,
+    far: 40,
+    cosInner: 1.9,
+    cosOuter: 2,
     dropOff: 1.2,
     intensity: 5,
     lightType: LightType.SpotLight,
-    direction: [-0.07, 0, -1],
-    position: [80, 18, 10],
+    direction: [-0.02, 0.02, -1],
+    position: [65, 25, 12],
     color: [0.5, 0.5, 0.5, 1],
   });
   scene.addLight(light3);
   const light4 = new Light({
-    near: 100,
-    far: 100,
-    cosInner: 1.9,
-    cosOuter: 2,
-    dropOff: 1,
+    near: 20,
+    far: 40,
+    cosInner: 1.2,
+    cosOuter: 1.3,
+    dropOff: 1.5,
     intensity: 2,
     lightType: LightType.SpotLight,
-    direction: [0.0, 0.03, -1],
-    position: [64, 43, 10],
+    direction: [0.02, -0.02, -1],
+    position: [60, 50, 12],
     color: [0.8, 0.8, 0.2, 1],
   });
   scene.addLight(light4);
@@ -254,12 +256,18 @@ export default (game) => {
   });
   scene.addEntity(block2);
 
-  const minionLeft = new MinionMap({ position: [17, 15] });
+  const minionLeft = new MinionMap({ size: [38, 34.4], position: [25, 30], z: 2 });
+  minionLeft.components.push(new ShadowReceiverComponent());
+  minionLeft.components.push(new ShadowCasterComponent());
   scene.addEntity(minionLeft);
-  const minionRight = new MinionMap({ position: [87, 15], noMap: true });
+  const minionRight = new MinionMap({ position: [65, 25], z: 2, noMap: true });
+  minionRight.components.push(new ShadowReceiverComponent());
+  minionLeft.components.push(new ShadowCasterComponent());
   scene.addEntity(minionRight);
 
-  const hero = new HeroMap();
+  const hero = new HeroMap({ position: [20, 30], z: 5 });
+  hero.components.push(new ShadowReceiverComponent());
+  hero.components.push(new ShadowCasterComponent());
   hero.components.push(new MaterialControlComponent({
     shininessInc: KeyboardKeys.Z,
     shininessDec: KeyboardKeys.X,
@@ -278,7 +286,8 @@ export default (game) => {
   scene.addEntity(hero);
 
   const hero2 = new Hero({
-    position: [80, 50],
+    position: [60, 50],
+    z: 5,
     size: [18, 24],
     keys: {
       left: KeyboardKeys.Left,
@@ -287,6 +296,7 @@ export default (game) => {
       down: KeyboardKeys.Down,
     },
   });
+  hero2.components.push(new ShadowCasterComponent());
   scene.addEntity(hero2);
 
   const message = new GameObject();

@@ -8,6 +8,26 @@ import {
   BackgroundTypes, CameraViewport,
 } from './camera';
 
+export class ShadowCasterComponent {
+  constructor() {
+    this.shadowColor = [0, 0, 0, 0.2];
+    this.saveXform = new TransformComponent();
+    this.casterMaxScale = 3; // maximum size a caster will be scaled
+    this.verySmall = 0.001; //
+    this.distanceFudge = 0.01;
+    // Ensure shadow caster is not at the same depth as receiver
+    this.receiverDistanceFudge = 0.6;
+    // Reduce the projection size increase of the caster
+  }
+}
+
+export class ShadowReceiverComponent {
+  constructor() {
+    this.shadowStencilBit = 0x01; // The stencil bit to switch on/off for shadow
+    this.shadowStencilMask = 0xFF; // The stencil mask
+  }
+}
+
 export class SpriteAnimation {
   firstSpriteLeft = 0.0; // 0.0 is left corner of image
 
@@ -57,6 +77,8 @@ export class TextRenderSystem {
 // @system
 export class TextureRenderSystem {
   render(world, camera, renderState, game) {
+    const casters = world.entities
+      .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
     world.entities.forEach((e) => {
       const renderable = e.components.find((c) => c instanceof RenderComponent);
       const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -68,7 +90,34 @@ export class TextureRenderSystem {
       if (!shader || !shader.modelTransform) return;
       if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
       RenderUtils.renderEntity(game, camera, renderable, transform);
+
+      const receiver = e.components.find((c) => c instanceof ShadowReceiverComponent);
+      if (receiver && casters.length > 0) {
+        TextureRenderSystem.renderEntityShadow(game, camera, receiver,
+          transform, renderable, casters);
+      }
     });
+  }
+
+  static renderEntityShadow(game, camera, receiver, transform, renderable, casters) {
+    const { shaders, gl } = game.renderState;
+    // A: draw receiver as a regular renderable
+    RenderUtils.shadowRecieverStencilOn(gl, receiver); // B1;
+    const shader = shaders.shadowReceiverShader;
+    RenderUtils.renderEntity(game, camera, renderable, transform, shader); // B2
+    RenderUtils.shadowRecieverStencilOff(gl, receiver); // B3
+    // C + D: now draw shadow color to the pixels in the stencil that are switched on
+    for (let i = 0; i < casters.length; i++) {
+      const casterRenderable = casters[i].components.find((c) => c instanceof RenderComponent);
+      const casterTransform = casters[i].components.find((c) => c instanceof TransformComponent);
+      if (casterRenderable && casterTransform && casterTransform.z > transform.z) {
+        const caster = casters[i].components.find((c) => c instanceof ShadowCasterComponent);
+        RenderUtils.renderShadowCaster(game, camera, transform,
+          caster, casterRenderable, casterTransform);
+      }
+    }
+    // switch off stencil checking
+    RenderUtils.shadowRecieverStencilDisable(gl);
   }
 }
 
@@ -90,6 +139,8 @@ export class RenderEngine {
       simpleShader: ShaderUtils.createSimpleShader({ gl, buffers }),
       textureShader: ShaderUtils.createTextureShader({ gl, buffers }),
       materialShader: ShaderUtils.createMaterialShader({ gl, buffers }),
+      shadowReceiverShader: ShaderUtils.createShadowReceiverShader({ gl, buffers }),
+      shadowCasterShader: ShaderUtils.createShadowCasterShader({ gl, buffers }),
     };
 
     this.state = new RenderState({
@@ -131,8 +182,18 @@ export class RenderEngine {
     const transform = {
       size: background.size,
       position,
+      z: 0,
     };
     RenderUtils.renderEntity(game, camera, background, transform);
+
+    const scene = game.scenes[game.currentScene];
+    const world = scene.worlds.find((w) => w.active); // TODO: refactor this
+    const casters = world.entities
+      .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
+    if (background.shadowReceiver && casters.length > 0) {
+      TextureRenderSystem.renderEntityShadow(game, camera,
+        background.shadowReceiver, transform, background, casters);
+    }
   }
 
   _setupViewProjection(gl, camera) {
@@ -162,7 +223,7 @@ export class RenderEngine {
     // Step B: Set up the View-Projection transform operator
     // Step B1: define the view matrix
     mat4.lookAt(camera.viewMatrix,
-      [worldCoordinate.center[0], worldCoordinate.center[1], 10], // WC center
+      [worldCoordinate.center[0], worldCoordinate.center[1], camera.cameraZ], // WC center
       [worldCoordinate.center[0], worldCoordinate.center[1], 0], //
       [0, 1, 0]); // orientation
     // Step B2: define the projection matrix
