@@ -11,138 +11,29 @@ import {
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { GameObject } from '../src';
-import {
-  TextComponent, RenderComponent,
-} from '../src/systems';
-import { RigidCircleComponent } from '../src/collision-engine';
+import { RigidCircleComponent, CollisionUtils } from '../src/collision-engine';
+import { TextComponent, TransformComponent } from '../src/systems';
 
-class GlobalLightControlSystem {
-  run(world, { inputState, scenes, currentScene }) {
-    const { keyboard } = inputState;
-    const scene = scenes[currentScene];
-    const { globalLight } = scene;
-    const delta = 0.05;
-    if (keyboard.clickedKeys[KeyboardKeys.Up]) {
-      const intensity = globalLight.ambientIntensity + delta;
-      scene.globalLight.ambientIntensity = intensity > 1 ? 0 : intensity;
-    }
-    if (keyboard.clickedKeys[KeyboardKeys.Down]) {
-      const intensity = globalLight.ambientIntensity - delta;
-      scene.globalLight.ambientIntensity = intensity < 0 ? 1 : intensity;
-    }
-    if (keyboard.clickedKeys[KeyboardKeys.Right]) {
-      const red = globalLight.ambientColor[0] + delta;
-      scene.globalLight.ambientColor[0] = red > 1 ? 0 : red;
-    }
-    if (keyboard.clickedKeys[KeyboardKeys.Left]) {
-      const red = globalLight.ambientColor[0] - delta;
-      scene.globalLight.ambientColor[0] = red < 0 ? 1 : red;
-    }
-  }
-}
-
-class ToogleMaterialComponent {
-  constructor({ material, key }) {
-    this.key = key;
-    this.material = material;
-  }
-}
-
-class ToogleMaterialSystem {
-  run(game, { scenes, currentScene, inputState }) {
-    const { cameras } = scenes[currentScene];
-    const { keyboard } = inputState;
-    cameras.forEach((camera) => {
-      const background = camera.components.find((c) => c instanceof BackgroundComponent);
-      const toggleMaterial = camera.components.find((c) => c instanceof ToogleMaterialComponent);
-      if (!background || !toggleMaterial) return;
-      if (keyboard.clickedKeys[toggleMaterial.key]) {
-        background.material = background.material ? null : toggleMaterial.material;
-      }
-    });
-  }
-}
-
-class TrackEntityMaterialComponent {
-  constructor({ entityId }) {
-    this.entityId = entityId;
-  }
-}
-
-class TrackMaterialSystem {
+export class CollisionSystem {
   run({ entities }) {
+    const tuples = [];
     entities.forEach((e) => {
-      const track = e.components.find((c) => c instanceof TrackEntityMaterialComponent);
-      const text = e.components.find((c) => c instanceof TextComponent);
-      if (!text || !track) return;
-      const trackEntity = entities.find((e2) => e2.id === track.entityId);
-      if (!trackEntity) return;
-      const { material } = trackEntity.components.find((c) => c instanceof RenderComponent);
-      text.content = `n(${material.shininess.toFixed(2)}) ${this._materialArraysToString(material)}`;
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const rigid = e.components.find((c) => c.rigidType >= 0);
+      if (!transform || !rigid) return;
+      rigid.drawColor = [0, 1, 0, 1];
+      tuples.push([transform, rigid]);
     });
-  }
-
-  _materialArraysToString({ ambient, diffuse, specular }) {
-    return `A(${this._arrayToString(ambient)}) D(${this._arrayToString(diffuse)}) S(${this._arrayToString(specular)})`;
-  }
-
-  _arrayToString([a, b, c]) {
-    return `${a.toFixed(1)},${b.toFixed(1)},${c.toFixed(1)}`;
-  }
-}
-
-class MaterialControlComponent {
-  constructor(params) {
-    Object.assign(this, params);
-  }
-}
-
-class MaterialControlSystem {
-  _channel = 0
-
-  run({ entities }, { inputState }) {
-    const { keyboard } = inputState;
-    entities.forEach((e) => {
-      const control = e.components.find((c) => c instanceof MaterialControlComponent);
-      const renderable = e.components.find((c) => c instanceof RenderComponent);
-      if (!control || !renderable) return;
-      const delta = 0.01;
-      if (keyboard.pressedKeys[control.shininessInc]) {
-        renderable.material.shininess += delta;
-      }
-      if (keyboard.pressedKeys[control.shininessDec]) {
-        renderable.material.shininess -= delta;
-      }
-      if (keyboard.pressedKeys[control.changeChannel]) {
-        this._channel++;
-        if (this._channel > 2) this._channel = 0;
-      }
-      const channel = this._selectChannel(renderable.material);
-      if (keyboard.pressedKeys[control.channel0Inc]) {
-        channel[0] += delta;
-      }
-      if (keyboard.pressedKeys[control.channel0Dec]) {
-        channel[0] -= delta;
-      }
-      if (keyboard.pressedKeys[control.channel1Inc]) {
-        channel[1] += delta;
-      }
-      if (keyboard.pressedKeys[control.channel1Dec]) {
-        channel[1] -= delta;
-      }
-      if (keyboard.pressedKeys[control.channel2Inc]) {
-        channel[2] += delta;
-      }
-      if (keyboard.pressedKeys[control.channel2Dec]) {
-        channel[2] -= delta;
+    tuples.forEach((e, i) => {
+      const [transform, rigid] = e;
+      for (let j = i + 1; j < tuples.length; j++) {
+        const [otherTransform, otherRigid] = tuples[j];
+        if (CollisionUtils.collidedShapes(rigid, transform, otherRigid, otherTransform)) {
+          rigid.drawColor = [1, 0, 0, 1];
+          otherRigid.drawColor = [1, 0, 0, 1];
+        }
       }
     });
-  }
-
-  _selectChannel(material) {
-    if (this._channel === 0) return material.ambient;
-    if (this._channel === 1) return material.diffuse;
-    return material.specular;
   }
 }
 
@@ -230,8 +121,5 @@ export default (game, canvas) => {
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
   scene.use(new MovementSystem());
-  scene.use(new GlobalLightControlSystem());
-  scene.use(new ToogleMaterialSystem());
-  scene.use(new MaterialControlSystem());
-  scene.use(new TrackMaterialSystem());
+  scene.use(new CollisionSystem());
 };
