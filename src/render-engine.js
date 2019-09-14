@@ -1,12 +1,13 @@
 import { mat4 } from 'gl-matrix';
 import {
-  RenderUtils, AnimationType, ShaderUtils, CameraUtils,
+  RenderUtils, AnimationType, ShaderUtils, CameraUtils, TransformUtils,
 } from './utils';
 import { TransformComponent, RenderComponent, TextComponent } from './systems';
 import {
   WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
   BackgroundTypes, CameraViewport,
 } from './camera';
+import { RigidRectangleComponent, RigidCircleComponent } from './collision-engine';
 
 export class ShadowCasterComponent {
   constructor() {
@@ -55,6 +56,101 @@ export class SpriteAnimation {
   currentSprite = 0;
 
   currentTick = 0;
+}
+
+export class LineShape {
+  firstVertex = [0, 0];
+
+  secondVertex = [0, 0];
+
+  pointSize = 1
+
+  drawVertices = false;
+
+  showLine = true;
+}
+
+// @system
+export class RigidShapeRenderSystem {
+  render(world, camera, renderState) {
+    const { gl, shaders, buffers } = renderState;
+    const shader = shaders.lineShader;
+    const { lineBuffer } = buffers;
+    world.entities.forEach((e) => {
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const shape = e.components.find((c) => c.rigidType >= 0);
+      if (!transform || !shape || !shape.drawBounds) return;
+      const line = new LineShape();
+      line.color = shape.drawColor;
+      // calculation for the X at the center of the shape
+      const x = transform.position[0];
+      const y = transform.position[1];
+      line.firstVertex = [x - shape.padding, y + shape.padding];
+      // TOP LEFT
+      line.secondVertex = [x + shape.padding, y - shape.padding];
+      // BOTTOM RIGHT
+      this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+      line.firstVertex = [x + shape.padding, y + shape.padding];
+      // TOP RIGHT
+      line.secondVertex = [x - shape.padding, y - shape.padding];
+      // BOTTOM LEFT
+      this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+
+      if (shape instanceof RigidRectangleComponent) {
+        const w = shape.width / 2;
+        const h = shape.height / 2;
+        line.firstVertex = [x - w, y + h]; // TOP LEFT
+        line.secondVertex = [x + w, y + h]; // TOP RIGHT
+        this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+        line.firstVertex = [x + w, y - h]; // BOTTOM RIGHT
+        this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+        line.secondVertex = [x - w, y - h]; // BOTTOM LEFT
+        this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+        line.firstVertex = [x - w, y + h]; // TOP LEFT
+        this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+      }
+      else if (shape instanceof RigidCircleComponent) {
+        // kNumSides forms the circle.
+        const { position } = transform;
+        const prevPoint = [...position];
+        const deltaTheta = (Math.PI * 2.0) / shape.numSides;
+        let theta = deltaTheta;
+        prevPoint[0] += shape.radius;
+        let i; let x2; let y2;
+        for (i = 1; i <= shape.numSides; i++) {
+          x2 = position[0] + shape.radius * Math.cos(theta);
+          y2 = position[1] + shape.radius * Math.sin(theta);
+          line.firstVertex = [prevPoint[0], prevPoint[1]];
+          line.secondVertex = [x2, y2];
+          this._renderLine(gl, shader, lineBuffer, camera, transform, line);
+          theta += deltaTheta;
+          prevPoint[0] = x2;
+          prevPoint[1] = y2;
+        }
+      }
+    });
+  }
+
+  _renderLine(gl, shader, buffer, camera, transform, line) {
+    // eslint-disable-next-line
+    shader.pointSize = line.pointSize;
+    // Draw line instead of triangle!
+
+    RenderUtils.activateShader(gl, buffer, shader, line.color, camera);
+
+    const sx = line.firstVertex[0] - line.secondVertex[0];
+    const sy = line.firstVertex[1] - line.secondVertex[1];
+    const cx = line.firstVertex[0] - sx / 2;
+    const cy = line.firstVertex[1] - sy / 2;
+    const xform = TransformUtils.getXForm({ ...transform, position: [cx, cy], size: [sx, sy] });
+    gl.uniformMatrix4fv(shader.modelTransform, false, xform);
+    if (line.showLine) {
+      gl.drawArrays(gl.LINE_STRIP, 0, 2);
+    }
+    if (!line.showLine || line.drawVertices) {
+      gl.drawArrays(gl.POINTS, 0, 2);
+    }
+  }
 }
 
 // @system
@@ -141,6 +237,7 @@ export class RenderEngine {
       materialShader: ShaderUtils.createMaterialShader({ gl, buffers }),
       shadowReceiverShader: ShaderUtils.createShadowReceiverShader({ gl, buffers }),
       shadowCasterShader: ShaderUtils.createShadowCasterShader({ gl, buffers }),
+      lineShader: ShaderUtils.createLineShader({ gl, buffers }),
     };
 
     this.state = new RenderState({
@@ -150,6 +247,7 @@ export class RenderEngine {
     });
     this.state.systems.push(new TextureRenderSystem());
     this.state.systems.push(new TextRenderSystem());
+    this.state.systems.push(new RigidShapeRenderSystem());
   }
 
   run(game) {

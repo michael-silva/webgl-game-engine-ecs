@@ -2,8 +2,9 @@ import { GameObject } from '../src';
 import { RenderComponent, TransformComponent, Material } from '../src/systems';
 import { MovementComponent, MovementKeysComponent } from './shared';
 import { KeyboardKeys } from '../src/input-system';
-import { SpriteAnimation } from '../src/render-system';
+import { SpriteAnimation } from '../src/render-engine';
 import { AnimationType } from '../src/utils';
+import { RigidCircleComponent, RigidRectangleComponent } from '../src/collision-engine';
 
 export class Rectangle extends GameObject {
   constructor({
@@ -80,10 +81,9 @@ export class Minion extends GameObject {
     }));
   }
 }
-
 export class MinionMap extends GameObject {
   constructor({
-    position: [x, y], z, size, noMap,
+    position: [x, y], z, size, noMap, isRigid,
   }) {
     super();
     this.components.push(new RenderComponent({
@@ -108,6 +108,14 @@ export class MinionMap extends GameObject {
       size: size || [18, 14.4],
       z,
     }));
+    if (isRigid) {
+      const rigid = Math.random() > 0.5
+        ? new RigidCircleComponent({ radius: 7, drawColor: [0, 1, 0, 1], drawBounds: true })
+        : new RigidRectangleComponent({
+          width: 17, height: 14, drawColor: [0, 1, 0, 1], drawBounds: true,
+        });
+      this.components.push(rigid);
+    }
   }
 }
 
@@ -175,5 +183,23 @@ export class Brain extends GameObject {
       size: [3, 5.4],
     }));
     this.components.push(new MovementComponent({ speed, direction: [0, 1] }));
+  }
+}
+
+export class Platform extends GameObject {
+  constructor({ position, size }) {
+    super();
+    this.components.push(new RenderComponent({
+      color: [1, 1, 1, 0],
+      texture: './assets/images/platform.png',
+    }));
+    this.components.push(new TransformComponent({
+      position,
+      size,
+    }));
+    const rigid = new RigidRectangleComponent({
+      width: size[0], height: size[1], drawColor: [0, 1, 0, 1], drawBounds: true,
+    });
+    this.components.push(rigid);
   }
 }

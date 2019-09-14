@@ -1,4 +1,4 @@
-import { SpriteAnimation } from '../src/render-system';
+import { SpriteAnimation } from '../src/render-engine';
 import {
   MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,

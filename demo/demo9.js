@@ -3,19 +3,18 @@ import {
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
-  Rectangle, MinionMap, HeroMap, Hero,
+  Hero, Platform, MinionMap,
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
   KeyboardRotationSystem, MovementSystem,
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
-import { GameObject, Light } from '../src';
+import { GameObject } from '../src';
 import {
-  TextComponent, TransformComponent, Material, RenderComponent,
+  TextComponent, RenderComponent,
 } from '../src/systems';
-import { LightType } from '../src/utils';
-import { ShadowReceiverComponent, ShadowCasterComponent } from '../src/render-engine';
+import { RigidCircleComponent } from '../src/collision-engine';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {
@@ -147,137 +146,68 @@ class MaterialControlSystem {
   }
 }
 
-export default (game) => {
+export default (game, canvas) => {
+  // eslint-disable-next-line no-param-reassign
+  canvas.width = 1280;
+  // eslint-disable-next-line no-param-reassign
+  canvas.height = 720;
   const scene = game.createScene();
-  scene.setGlobalLight({ ambientColor: [0.3, 0.3, 0.3, 1] });
+  scene.setGlobalLight({ ambientColor: [0.8, 0.8, 0.8, 1] });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
-    center: [50, 37.5],
-    width: 100,
+    center: [100, 56.25],
+    width: 200,
   }));
   camera.components.push(new ViewportComponent({
-    array: [0, 0, 640, 480],
+    array: [0, 0, 1280, 720],
   }));
-  const material = new Material({
-    shininess: 100,
-    specular: [1, 0, 0, 1],
-  });
-  camera.components.push(new ToogleMaterialComponent({ key: KeyboardKeys.Space, material }));
   camera.components.push(new BackgroundComponent({
-    // type: BackgroundTypes.Fixed,
     color: [0.8, 0.8, 0.8, 0],
-    size: [100, 100],
-    position: [50, 35],
-    // position: [0, 0],
-    texture: './assets/images/bg.png',
-    normalMap: './assets/images/bg_normal.png',
-    material,
-    shadowReceiver: new ShadowReceiverComponent(),
   }));
   scene.addCamera(camera);
 
   scene.setResources([
     './assets/images/bg.png',
-    './assets/images/bg_normal.png',
     './assets/images/minion_sprite.png',
-    './assets/images/minion_sprite_normal.png',
+    './assets/images/platform.png',
     './assets/fonts/system-default-font.fnt',
   ]);
 
-  // the light
-  const light1 = new Light({
-    near: 8,
-    far: 20,
-    cosInner: 0.1,
-    cosOuter: 0.2,
-    dropOff: 1,
-    intensity: 5,
-    lightType: LightType.PointLight,
-    direction: [0, 0, -1],
-    position: [20, 25, 10],
-    color: [0.6, 1.0, 0.0, 1],
-  });
-  scene.addLight(light1);
-  const light2 = new Light({
-    near: 500, // near anf far distances: essentially switch this off
-    far: 500,
-    cosInner: 0.1,
-    cosOuter: 0.2,
-    dropOff: 1,
-    intensity: 2,
-    lightType: LightType.DirectionalLight,
-    direction: [0.4, 0.4, -1],
-    position: [15, 50, 10],
-    color: [0.7, 0.7, 0.0, 1],
-  });
-  scene.addLight(light2);
-  const light3 = new Light({
-    near: 20,
-    far: 40,
-    cosInner: 1.9,
-    cosOuter: 2,
-    dropOff: 1.2,
-    intensity: 5,
-    lightType: LightType.SpotLight,
-    direction: [-0.02, 0.02, -1],
-    position: [65, 25, 12],
-    color: [0.5, 0.5, 0.5, 1],
-  });
-  scene.addLight(light3);
-  const light4 = new Light({
-    near: 20,
-    far: 40,
-    cosInner: 1.2,
-    cosOuter: 1.3,
-    dropOff: 1.5,
-    intensity: 2,
-    lightType: LightType.SpotLight,
-    direction: [0.02, -0.02, -1],
-    position: [60, 50, 12],
-    color: [0.8, 0.8, 0.2, 1],
-  });
-  scene.addLight(light4);
+  // create a few objects ...
+  let i; let rx; let ry; let obj;
+  ry = Math.random() * 5 + 20;
+  for (i = 0; i < 4; i++) {
+    rx = 20 + Math.random() * 80;
+    obj = new Hero({ position: [rx, ry], size: [18, 24] });
+    obj.components.push(new RigidCircleComponent({
+      radius: 9,
+      drawBounds: true,
+      drawColor: [0, 1, 0, 1],
+    }));
+    scene.addEntity(obj);
 
-  const block1 = new Rectangle({
-    color: [1, 0, 0, 1],
-    transform: new TransformComponent({
-      size: [5, 5],
-      position: [30, 50],
-    }),
-  });
-  scene.addEntity(block1);
+    rx = rx + 20 + Math.random() * 80;
+    obj = new MinionMap({ position: [rx, ry], size: [18, 14.4], isRigid: true });
+    scene.addEntity(obj);
 
-  const block2 = new Rectangle({
-    color: [0, 1, 0, 1],
-    transform: new TransformComponent({
-      size: [5, 5],
-      position: [70, 50],
-    }),
-  });
-  scene.addEntity(block2);
+    rx = 20 + Math.random() * 160;
+    obj = new Platform({ position: [rx, ry], size: [30, 3.75] });
+    scene.addEntity(obj);
 
-  const minionLeft = new MinionMap({ size: [38, 34.4], position: [25, 30], z: 2 });
-  minionLeft.components.push(new ShadowReceiverComponent());
-  minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionLeft);
-  const minionRight = new MinionMap({ position: [65, 25], z: 2, noMap: true });
-  minionRight.components.push(new ShadowReceiverComponent());
-  minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionRight);
+    ry = ry + 20 + Math.random() * 10;
+  }
 
-  const hero = new HeroMap({ position: [20, 30], z: 5 });
-  hero.components.push(new ShadowReceiverComponent());
-  hero.components.push(new ShadowCasterComponent());
-  hero.components.push(new MaterialControlComponent({
-    shininessInc: KeyboardKeys.Z,
-    shininessDec: KeyboardKeys.X,
-    channel0Inc: KeyboardKeys.C,
-    channel0Dec: KeyboardKeys.V,
-    channel1Inc: KeyboardKeys.B,
-    channel1Dec: KeyboardKeys.N,
-    channel2Inc: KeyboardKeys.M,
-    channel2Dec: KeyboardKeys.J,
-    changeChannel: KeyboardKeys.Enter,
+  const minion = new MinionMap({ position: [rx, ry], size: [18, 14.4], isRigid: true });
+  scene.addEntity(minion);
+
+  const platform = new Platform({ position: [20, 30], size: [30, 3.75] });
+  scene.addEntity(platform);
+
+  const hero = new Hero({ position: [20, 30], size: [18, 24] });
+  hero.components.push(new RigidCircleComponent({
+    radius: 9,
+    drawBounds: true,
+    drawColor: [0, 1, 0, 1],
   }));
   hero.components.push(new RotationKeysComponent({
     left: KeyboardKeys.Q,
@@ -285,22 +215,7 @@ export default (game) => {
   }));
   scene.addEntity(hero);
 
-  const hero2 = new Hero({
-    position: [60, 50],
-    z: 5,
-    size: [18, 24],
-    keys: {
-      left: KeyboardKeys.Left,
-      right: KeyboardKeys.Right,
-      up: KeyboardKeys.Up,
-      down: KeyboardKeys.Down,
-    },
-  });
-  hero2.components.push(new ShadowCasterComponent());
-  scene.addEntity(hero2);
-
   const message = new GameObject();
-  message.components.push(new TrackEntityMaterialComponent({ entityId: hero.id }));
   message.components.push(
     new TextComponent({
       content: 'Status Message',

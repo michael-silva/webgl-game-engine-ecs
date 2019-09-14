@@ -3,6 +3,7 @@ import {
 } from 'gl-matrix';
 import simpleVertexShader from './GLSLShaders/SimpleVS.glsl';
 import simpleFragmentShader from './GLSLShaders/SimpleFS.glsl';
+import lineFragmentShader from './GLSLShaders/LineFS.glsl';
 import textureVertexShader from './GLSLShaders/TextureVS.glsl';
 import lightFragmentShader from './GLSLShaders/LightFS.glsl';
 import shadowReceiverFragmentShader from './GLSLShaders/ShadowReceiverFS.glsl';
@@ -295,6 +296,12 @@ export class RenderUtils {
       0.0, 0.0,
     ];
 
+    // this is to support the debugging of physics engine
+    const verticesOfLine = [
+      0.5, 0.5, 0.0,
+      -0.5, -0.5, 0.0,
+    ];
+
     // Step A: Allocate and store vertex positions into the webGL context
     // Create a buffer on the gl context for our vertex positions
     const vertexBuffer = gl.createBuffer();
@@ -331,10 +338,20 @@ export class RenderUtils {
       gl.DYNAMIC_DRAW,
     );
 
+    // Create a buffer on the gGL context for our vertex positions
+    const lineBuffer = gl.createBuffer();
+
+    // Connect the vertexBuffer to the ARRAY_BUFFER global gl binding point.
+    gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+
+    // Put the verticesOfSquare into the vertexBuffer, as non-changing drawing data (STATIC_DRAW)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verticesOfLine), gl.STATIC_DRAW);
+
     return {
       vertexBuffer,
       textureBuffer,
       spriteBuffer,
+      lineBuffer,
     };
   }
 
@@ -651,6 +668,23 @@ export class RenderUtils {
   static activateGlobalLight(gl, shader, ambientColor, ambientIntensity) {
     gl.uniform4fv(shader.globalAmbientColor, ambientColor);
     gl.uniform1f(shader.globalAmbientIntensity, ambientIntensity);
+  }
+
+  static activateLineShader(gl, buffer, shader, color, camera) {
+    gl.useProgram(shader.compiledShader);
+    gl.uniformMatrix4fv(shader.viewProjection, false, camera.viewProjection);
+
+    gl.uniform1f(shader.pointSizeRef, shader.pointSize);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.vertexAttribPointer(shader.shaderVertexPositionAttribute,
+      3, // each element is a 3-float (x,y.z)
+      gl.FLOAT, // data type is FLOAT
+      false, // if the content is normalized vectors
+      0, // number of bytes to skip in between elements
+      0); // offsets to the first element
+
+    gl.enableVertexAttribArray(shader.shaderVertexPositionAttribute);
+    gl.uniform4fv(shader.pixelColor, color);
   }
 
   static activateShader(gl, buffer, shader, color, camera) {
@@ -997,6 +1031,27 @@ export class ShaderUtils {
     });
 
     return shader;
+  }
+
+
+  static createLineShader({ gl, buffers }) {
+    const shader = ShaderUtils.createShader({
+      gl,
+      buffer: buffers.vertexBuffer,
+      vertexShaderSource: simpleVertexShader,
+      fragmentShaderSource: lineFragmentShader,
+    });
+
+    // point size uniform
+    const pointSizeRef = gl.getUniformLocation(shader.compiledShader, 'uPointSize');
+
+    const pointSize = 1;
+
+    return {
+      ...shader,
+      pointSize,
+      pointSizeRef,
+    };
   }
 
   static createTextureShader({ gl, buffers }) {

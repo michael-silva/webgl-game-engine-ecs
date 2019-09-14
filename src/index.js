@@ -5,7 +5,7 @@ import {
   GameLoopSystem, LoaderSystem,
   TextSystem, GarbageCollectorSystem,
 } from './systems';
-import { RenderEngine } from './render-system';
+import { RenderEngine } from './render-engine';
 import { InputEngine } from './input-system';
 import { LightType } from './utils';
 
