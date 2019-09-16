@@ -109,10 +109,27 @@ export class MinionMap extends GameObject {
       z,
     }));
     if (isRigid) {
+      const speed = 5;
+      const velocity = Math.random() > 0.5 ? [speed, 0] : [-speed, 0];
       const rigid = Math.random() > 0.5
-        ? new RigidCircleComponent({ radius: 7, drawColor: [0, 1, 0, 1], drawBounds: true })
+        ? new RigidCircleComponent({
+          radius: 6.5,
+          mass: 2,
+          friction: 0,
+          velocity,
+          acceleration: [0, 0],
+          drawColor: [0, 1, 0, 1],
+          drawBounds: true,
+        })
         : new RigidRectangleComponent({
-          width: 17, height: 14, drawColor: [0, 1, 0, 1], drawBounds: true,
+          width: 17,
+          height: 14,
+          mass: 2,
+          friction: 0,
+          velocity,
+          acceleration: [0, 0],
+          drawColor: [0, 1, 0, 1],
+          drawBounds: true,
         });
       this.components.push(rigid);
     }
@@ -198,7 +215,25 @@ export class Platform extends GameObject {
       size,
     }));
     const rigid = new RigidRectangleComponent({
-      width: size[0], height: size[1], drawColor: [0, 1, 0, 1], drawBounds: true,
+      width: size[0], height: size[1] - 0.75, mass: 0, drawColor: [0, 1, 0, 1], drawBounds: true,
+    });
+    this.components.push(rigid);
+  }
+}
+
+export class Wall extends GameObject {
+  constructor({ position, size }) {
+    super();
+    this.components.push(new RenderComponent({
+      color: [1, 1, 1, 0],
+      texture: './assets/images/wall.png',
+    }));
+    this.components.push(new TransformComponent({
+      position,
+      size,
+    }));
+    const rigid = new RigidRectangleComponent({
+      width: size[0] - 2, height: size[1], mass: 0, drawColor: [0, 1, 0, 1], drawBounds: true,
     });
     this.components.push(rigid);
   }

@@ -3,7 +3,7 @@ import {
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
-  Hero, Platform, MinionMap,
+  Hero, Platform, MinionMap, Wall,
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
@@ -11,7 +11,9 @@ import {
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import { GameObject } from '../src';
-import { RigidCircleComponent, CollisionUtils } from '../src/collision-engine';
+import {
+  CollisionUtils, PhysicsSystem, RigidRectangleComponent,
+} from '../src/collision-engine';
 import { TextComponent, TransformComponent } from '../src/systems';
 
 export class CollisionSystem {
@@ -61,42 +63,56 @@ export default (game, canvas) => {
     './assets/images/bg.png',
     './assets/images/minion_sprite.png',
     './assets/images/platform.png',
+    './assets/images/wall.png',
     './assets/fonts/system-default-font.fnt',
   ]);
 
   // create a few objects ...
-  let i; let rx; let ry; let obj;
+  let i; let j; let rx; let ry; let obj; let dy;
+  const dx = 80;
   ry = Math.random() * 5 + 20;
   for (i = 0; i < 4; i++) {
-    rx = 20 + Math.random() * 80;
-    obj = new Hero({ position: [rx, ry], size: [18, 24] });
-    obj.components.push(new RigidCircleComponent({
-      radius: 9,
-      drawBounds: true,
-      drawColor: [0, 1, 0, 1],
-    }));
-    scene.addEntity(obj);
-
-    rx = rx + 20 + Math.random() * 80;
+    rx = 20 + Math.random() * 160;
     obj = new MinionMap({ position: [rx, ry], size: [18, 14.4], isRigid: true });
     scene.addEntity(obj);
 
-    rx = 20 + Math.random() * 160;
-    obj = new Platform({ position: [rx, ry], size: [30, 3.75] });
-    scene.addEntity(obj);
+    for (j = 0; j < 2; j++) {
+      rx = 20 + (j * dx) + Math.random() * dx;
+      dy = 10 * Math.random() - 5;
+      obj = new Platform({ position: [rx, ry + dy], size: [30, 3.75] });
+      scene.addEntity(obj);
+    }
 
     ry = ry + 20 + Math.random() * 10;
   }
 
-  const minion = new MinionMap({ position: [rx, ry], size: [18, 14.4], isRigid: true });
-  scene.addEntity(minion);
+  // the floor and ceiling
+  rx = -15;
+  for (i = 0; i < 9; i++) {
+    obj = new Platform({ position: [rx, 2], size: [30, 3.75] });
+    scene.addEntity(obj);
+    obj = new Platform({ position: [rx, 112], size: [30, 3.75] });
+    scene.addEntity(obj);
+    rx += 30;
+  }
 
-  const platform = new Platform({ position: [20, 30], size: [30, 3.75] });
-  scene.addEntity(platform);
+  // the left and right walls
+  ry = 12;
+  for (i = 0; i < 8; i++) {
+    obj = new Wall({ position: [5, ry], size: [4, 16] });
+    scene.addEntity(obj);
 
-  const hero = new Hero({ position: [20, 30], size: [18, 24] });
-  hero.components.push(new RigidCircleComponent({
-    radius: 9,
+    obj = new Wall({ position: [195, ry], size: [4, 16] });
+    scene.addEntity(obj);
+    ry += 16;
+  }
+
+  const hero = new Hero({ position: [16, 22], size: [18, 24] });
+  hero.components.push(new RigidRectangleComponent({
+    mass: 0.7,
+    restitution: 0.3,
+    width: 16,
+    height: 22,
     drawBounds: true,
     drawColor: [0, 1, 0, 1],
   }));
@@ -110,9 +126,9 @@ export default (game, canvas) => {
   message.components.push(
     new TextComponent({
       content: 'Status Message',
-      position: [2, 4],
+      position: [10, 110],
       size: 3,
-      color: [1, 0, 0, 1],
+      color: [1, 1, 1, 1],
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
@@ -121,5 +137,5 @@ export default (game, canvas) => {
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
   scene.use(new MovementSystem());
-  scene.use(new CollisionSystem());
+  scene.use(new PhysicsSystem());
 };
