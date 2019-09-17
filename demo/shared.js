@@ -8,7 +8,7 @@ import { WorldCoordinateComponent } from '../src/camera';
 export class MovementComponent {
   constructor({ speed, direction }) {
     this.speed = speed;
-    this.direction = direction || [0, 0];
+    this.direction = direction || [0, 1];
   }
 }
 

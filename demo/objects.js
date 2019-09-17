@@ -202,39 +202,3 @@ export class Brain extends GameObject {
     this.components.push(new MovementComponent({ speed, direction: [0, 1] }));
   }
 }
-
-export class Platform extends GameObject {
-  constructor({ position, size }) {
-    super();
-    this.components.push(new RenderComponent({
-      color: [1, 1, 1, 0],
-      texture: './assets/images/platform.png',
-    }));
-    this.components.push(new TransformComponent({
-      position,
-      size,
-    }));
-    const rigid = new RigidRectangleComponent({
-      width: size[0], height: size[1] - 0.75, mass: 0, drawColor: [0, 1, 0, 1], drawBounds: true,
-    });
-    this.components.push(rigid);
-  }
-}
-
-export class Wall extends GameObject {
-  constructor({ position, size }) {
-    super();
-    this.components.push(new RenderComponent({
-      color: [1, 1, 1, 0],
-      texture: './assets/images/wall.png',
-    }));
-    this.components.push(new TransformComponent({
-      position,
-      size,
-    }));
-    const rigid = new RigidRectangleComponent({
-      width: size[0] - 2, height: size[1], mass: 0, drawColor: [0, 1, 0, 1], drawBounds: true,
-    });
-    this.components.push(rigid);
-  }
-}
