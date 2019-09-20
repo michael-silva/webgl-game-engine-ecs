@@ -270,10 +270,10 @@ export class PhysicsSystem {
     if (!this.continueRelaxation()) this.beginRelaxation();
     tuples.forEach((e, i) => {
       const [transform, rigid] = e;
-      for (let j = i + 1; j < tuples.length; j++) {
-        const [otherTransform, otherRigid] = tuples[j];
+      for (let j = 0; j < tuples.length; j++) {
         // eslint-disable-next-line no-continue
-        if (rigid.invMass === 0 && otherRigid.invMass === 0) continue;
+        if (rigid.invMass === 0 || i === j) continue;
+        const [otherTransform, otherRigid] = tuples[j];
         const collisionInfo = CollisionUtils.collidedShapes(rigid, transform,
           otherRigid, otherTransform);
         if (collisionInfo) {
