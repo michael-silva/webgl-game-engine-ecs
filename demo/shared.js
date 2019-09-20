@@ -1,9 +1,11 @@
 /* eslint-disable max-classes-per-file */
 import { vec2 } from 'gl-matrix';
-import { TransformComponent, RenderComponent } from '../src/systems';
 import { AudioComponent } from '../src/audio-system';
-import { TransformUtils, BoundingUtils, RenderUtils } from '../src/utils';
+import {
+  TransformUtils, BoundingUtils, RenderUtils, TransformComponent,
+} from '../src/utils';
 import { WorldCoordinateComponent } from '../src/camera';
+import { RenderComponent } from '../src/render-engine';
 
 export class MovementComponent {
   constructor({ speed, direction }) {

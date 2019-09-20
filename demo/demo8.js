@@ -10,12 +10,12 @@ import {
   KeyboardRotationSystem, MovementSystem,
 } from './shared';
 import { KeyboardKeys } from '../src/input-system';
-import { GameObject, Light } from '../src';
+import { GameObject } from '../src';
+import { TransformComponent } from '../src/utils';
 import {
-  TextComponent, TransformComponent, Material, RenderComponent,
-} from '../src/systems';
-import { LightType } from '../src/utils';
-import { ShadowReceiverComponent, ShadowCasterComponent } from '../src/render-engine';
+  ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
+  RenderComponent, Material, Light, LightType,
+} from '../src/render-engine';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {

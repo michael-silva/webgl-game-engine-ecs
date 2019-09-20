@@ -1,10 +1,11 @@
-import { SpriteAnimation } from '../src/render-engine';
+import { SpriteAnimation, RenderComponent, AnimationType } from '../src/render-engine';
 import {
   MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
-import { Color, RenderUtils, AnimationType } from '../src/utils';
-import { TransformComponent, RenderComponent } from '../src/systems';
+import {
+  Color, RenderUtils, TransformComponent,
+} from '../src/utils';
 import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
 import {

@@ -3,11 +3,10 @@
 import { mat4, vec2 } from 'gl-matrix';
 import {
   GameLoopSystem, LoaderSystem,
-  TextSystem, GarbageCollectorSystem,
+  GarbageCollectorSystem,
 } from './systems';
 import { RenderEngine } from './render-engine';
 import { InputEngine } from './input-system';
-import { LightType } from './utils';
 
 // @component
 export class GameWorldEntity {
@@ -41,32 +40,6 @@ export class GlobalLight {
 
   ambientIntensity = 1;
 }
-
-
-export class Light {
-  constructor({
-    color,
-    position = [0, 0, 5],
-    near, far, intensity,
-    lightType = LightType.SpotLight,
-    dropOff, cosInner, cosOuter,
-    direction = [0, 0, -1],
-  }) {
-    this.color = color || [1, 1, 1, 1]; // light color
-    this.position = position; // light position in WC
-    this.direction = direction; // light position in WC
-    this.near = near || 5; // within Near is fully lighted
-    this.far = far || 10; // farther than Far is not lighted
-    this.cosInner = cosInner || 0.1;
-    this.cosOuter = cosOuter || 0.3;
-    this.dropOff = dropOff || 1;
-    this.lightType = lightType;
-    this.intensity = intensity || 1;
-    this.isOn = true;
-    this.castShadow = true;
-  }
-}
-
 
 // @entity
 export class GameSceneEntity {
@@ -224,7 +197,6 @@ export class GameEngine {
     this._game.inputState = this._game.inputEngine.state;
     this._loop = new GameLoopSystem();
     this.useBefore(new LoaderSystem());
-    this.useAfter(new TextSystem());
     this.useAfter(new GarbageCollectorSystem());
   }
 

@@ -1,4 +1,5 @@
 /* eslint-disable max-classes-per-file */
+import { vec4 } from 'gl-matrix';
 import {
   BackgroundComponent, WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
@@ -18,7 +19,10 @@ import {
 import {
   CameraUtils, TransformUtils, BoundingUtils, TransformComponent,
 } from '../src/utils';
-import { RenderComponent, TextComponent } from '../src/render-engine';
+import { RenderComponent, TextComponent, ParticleRenderComponent } from '../src/render-engine';
+import {
+  ParticleLifecycleComponent, ParticlePhysicsSystem, ParticleUpdateSystem, ParticleShapeComponent,
+} from '../src/particles-system';
 
 
 export class Platform extends GameObject {
@@ -131,10 +135,37 @@ class PointTargetComponent {
   }
 }
 
+class Particle extends GameObject {
+  constructor({
+    position,
+    size,
+    velocity,
+    sizeDelta,
+    cyclesToLive,
+  } = {}) {
+    super();
+    this.components.push(new ParticleRenderComponent({
+      color: [1, 0, 0, 1],
+      texture: './assets/images/particle.png',
+    }));
+    this.components.push(new TransformComponent({
+      position,
+      size,
+    }));
+    this.components.push(new ParticleLifecycleComponent({
+      cyclesToLive,
+      sizeDelta,
+    }));
+    this.components.push(new ParticleShapeComponent({
+      velocity,
+    }));
+  }
+}
+
 class MouseObjectsCreationSystem {
   run(world, { inputState, scenes, currentScene }) {
     const { mouse, keyboard } = inputState;
-    if (mouse.clickedButtons[MouseButton.Left]) {
+    if (mouse.pressedButtons[MouseButton.Left]) {
       const { cameras } = scenes[currentScene];
       const camera = cameras[0];
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -148,7 +179,11 @@ class MouseObjectsCreationSystem {
         const obj = new MinionMap({ position, size: [18, 14.4], isRigid: true });
         world.entities.push(obj);
       }
-      else {
+      else if (keyboard.pressedKeys[KeyboardKeys.C]) {
+        const obj = this._createParticle(...position);
+        world.entities.push(obj);
+      }
+      else if (mouse.clickedButtons[MouseButton.Left]) {
         const target = world.entities
           .find((e) => e.components.some((c) => c instanceof TargetComponent));
         const dyePack = new DyePack({ position });
@@ -157,6 +192,40 @@ class MouseObjectsCreationSystem {
         dyePack.components.push(new PointTargetComponent({ targetId: target.id }));
         world.entities.push(dyePack);
       }
+    }
+  }
+
+  _createParticle(atX, atY) {
+    const cyclesToLive = 30 + Math.random() * 200;
+    // size of the particle
+    const r = 5.5 + Math.random() * 0.5;
+    // final color
+    const fr = 3.5 + Math.random();
+    const fg = 0.4 + 0.1 * Math.random();
+    const fb = 0.3 + 0.1 * Math.random();
+    // velocity on the particle
+    const fx = 10 - 20 * Math.random();
+    const fy = 10 * Math.random();
+    // size delta
+    const sizeDelta = 0.98;
+    const particle = new Particle({
+      position: [atX, atY],
+      size: [r, r],
+      velocity: [fx, fy],
+      sizeDelta,
+      cyclesToLive,
+    });
+
+    this._setFinalColor(particle, [fr, fg, fb, 0.6]);
+    return particle;
+  }
+
+  _setFinalColor(particle, value) {
+    const renderable = particle.components.find((c) => c instanceof ParticleRenderComponent);
+    const lifecycle = particle.components.find((c) => c instanceof ParticleLifecycleComponent);
+    vec4.sub(lifecycle.deltaColor, value, renderable.color);
+    if (lifecycle.cyclesToLive !== 0) {
+      vec4.scale(lifecycle.deltaColor, lifecycle.deltaColor, 1 / lifecycle.cyclesToLive);
     }
   }
 }
@@ -266,6 +335,7 @@ export default (game) => {
     './assets/images/minion_sprite.png',
     './assets/images/dye_pack.png',
     './assets/images/platform.png',
+    './assets/images/particle.png',
     './assets/images/wall.png',
     './assets/fonts/system-default-font.fnt',
   ]);
@@ -346,6 +416,8 @@ export default (game) => {
   scene.use(new MouseMoveRigidShapesSystem());
   scene.use(new PointTargetSystem());
   scene.use(new MovementSystem());
+  scene.use(new ParticleUpdateSystem());
+  scene.use(new ParticlePhysicsSystem());
   scene.use(new PhysicsControlSystem());
   scene.use(new PhysicsSystem());
 };

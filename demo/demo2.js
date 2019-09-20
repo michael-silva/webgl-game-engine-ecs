@@ -1,10 +1,11 @@
-import { TransformComponent, RenderComponent } from '../src/systems';
+import { RenderComponent } from '../src/render-engine';
 import {
   MovementComponent, MovementKeysComponent, KeyboardMovementSystem,
   MovementSystem, MovementChangeLevelSystem, MovementAudioSystem,
 } from './shared';
 import { AudioComponent, AudioSystem } from '../src/audio-system';
 import { SceneParser } from '../src/scene-parser';
+import { TransformComponent } from '../src/utils';
 
 export default (game, data) => {
   const parser = new SceneParser();

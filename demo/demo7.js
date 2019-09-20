@@ -7,11 +7,8 @@ import {
   Interpolation, InterpolationArray,
 } from './shared';
 import {
-  BoundingUtils, RenderUtils, TransformUtils, CameraUtils,
+  BoundingUtils, RenderUtils, TransformUtils, CameraUtils, TransformComponent,
 } from '../src/utils';
-import {
-  TransformComponent, RenderComponent, TextComponent,
-} from '../src/systems';
 import {
   Minion, Hero, Brain, Portal,
 } from './objects';
@@ -20,6 +17,7 @@ import {
   BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
 import { GameObject } from '../src';
+import { RenderComponent, TextComponent } from '../src/render-engine';
 
 class WorldCoordinateInterpolation {
   constructor(props) {

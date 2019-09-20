@@ -13,43 +13,75 @@ import initDemo6 from './demo6';
 import initDemo7 from './demo7';
 import initDemo8 from './demo8';
 import initDemo9 from './demo9';
+import initDemo10 from './demo10';
 import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
+  constructor(canvas) {
+    this.canvas = canvas;
+  }
+
   run(game) {
     const { inputState: { keyboard } } = game;
-    if (keyboard.pressedKeys[KeyboardKeys.One]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 0;
+    if (keyboard.pressedKeys[KeyboardKeys.Shift]) {
+      if (keyboard.pressedKeys[KeyboardKeys.One]) {
+        this.changeScene(game, 8);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Two]) {
+        this.changeScene(game, 9);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Three]) {
+        this.changeScene(game, 10);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Four]) {
+        this.changeScene(game, 11);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Five]) {
+        this.changeScene(game, 12);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Six]) {
+        this.changeScene(game, 13);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Seven]) {
+        this.changeScene(game, 14);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Eight]) {
+        this.changeScene(game, 15);
+      }
     }
-    if (keyboard.pressedKeys[KeyboardKeys.Two]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 1;
+    else {
+      if (keyboard.pressedKeys[KeyboardKeys.One]) {
+        this.changeScene(game, 0);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Two]) {
+        this.changeScene(game, 1);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Three]) {
+        this.changeScene(game, 2);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Four]) {
+        this.changeScene(game, 3);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Five]) {
+        this.changeScene(game, 4);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Six]) {
+        this.changeScene(game, 5);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Seven]) {
+        this.changeScene(game, 6);
+      }
+      if (keyboard.pressedKeys[KeyboardKeys.Eight]) {
+        this.changeScene(game, 7);
+      }
     }
-    if (keyboard.pressedKeys[KeyboardKeys.Three]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 2;
-    }
-    if (keyboard.pressedKeys[KeyboardKeys.Four]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 3;
-    }
-    if (keyboard.pressedKeys[KeyboardKeys.Five]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 4;
-    }
-    if (keyboard.pressedKeys[KeyboardKeys.Six]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 5;
-    }
-    if (keyboard.pressedKeys[KeyboardKeys.Seven]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 6;
-    }
-    if (keyboard.pressedKeys[KeyboardKeys.Eight]) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 7;
-    }
+  }
+
+  changeScene(game, number) {
+    // eslint-disable-next-line no-param-reassign
+    game.currentScene = number;
+    this.canvas.width = number > 7 ? 1280 : 640;
+    this.canvas.height = number > 7 ? 720 : 480;
   }
 }
 
@@ -60,7 +92,7 @@ function main() {
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
   game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });
-  game.useBefore(new KeyboardChangeDemoSystem());
+  game.useBefore(new KeyboardChangeDemoSystem(canvas));
   fetch('assets/scenes/demo1/scene.json')
     .then((res) => res.json())
     .then((data) => {
@@ -72,10 +104,13 @@ function main() {
       initDemo6(game);
       initDemo7(game);
       initDemo8(game);
-      initDemo9(game, canvas);
+      initDemo9(game);
+      initDemo10(game);
 
       game.useAfter(new SoundSystem());
-      game.run({ scene: 8 });
+      game.run({ scene: 9 });
+      canvas.width = 1280;
+      canvas.height = 720;
     });
 }
 

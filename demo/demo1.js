@@ -1,9 +1,9 @@
-import { TransformComponent } from '../src/systems';
+import { TransformComponent, TransformUtils, Color } from '../src/utils';
 import {
   MovementComponent, MovementKeysComponent,
   KeyboardMovementSystem, MovementSystem,
 } from './shared';
-import { TransformUtils, Color } from '../src/utils';
+
 import {
   WorldCoordinateComponent, CameraEntity, ViewportComponent, BackgroundComponent,
 } from '../src/camera';

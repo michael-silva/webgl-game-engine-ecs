@@ -3,15 +3,15 @@ import {
   MovementSystem, KeyboardMovementSystem, RotationKeysComponent, KeyboardRotationSystem,
 } from './shared';
 import { GameObject } from '../src';
-import { TransformUtils, BoundingUtils, CameraUtils } from '../src/utils';
 import {
-  TransformComponent, RenderComponent, TextComponent,
-} from '../src/systems';
+  TransformUtils, BoundingUtils, CameraUtils, TransformComponent,
+} from '../src/utils';
 import { KeyboardKeys } from '../src/input-system';
 import { Minion, Hero, Brain } from './objects';
 import {
   CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
 } from '../src/camera';
+import { RenderComponent, TextComponent } from '../src/render-engine';
 
 class MovementLimitComponent {
   constructor({

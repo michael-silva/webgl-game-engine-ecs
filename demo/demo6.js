@@ -4,11 +4,8 @@ import {
 } from './shared';
 import { GameObject } from '../src';
 import {
-  BoundingUtils, RenderUtils, TransformUtils,
+  BoundingUtils, RenderUtils, TransformUtils, TransformComponent,
 } from '../src/utils';
-import {
-  TransformComponent, RenderComponent,
-} from '../src/systems';
 import {
   Minion, Hero, Brain,
 } from './objects';
@@ -16,6 +13,7 @@ import { KeyboardKeys } from '../src/input-system';
 import {
   CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
 } from '../src/camera';
+import { RenderComponent } from '../src/render-engine';
 
 class MovementLimitComponent {
   constructor({

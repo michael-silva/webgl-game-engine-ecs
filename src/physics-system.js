@@ -1,5 +1,5 @@
 import { vec2 } from 'gl-matrix';
-import { TransformComponent } from './systems';
+import { TransformComponent } from './utils';
 
 export const RigidType = Object.freeze({
   RigidAbstract: 0,

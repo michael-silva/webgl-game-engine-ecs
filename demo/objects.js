@@ -1,10 +1,11 @@
 import { GameObject } from '../src';
-import { RenderComponent, TransformComponent, Material } from '../src/systems';
 import { MovementComponent, MovementKeysComponent } from './shared';
 import { KeyboardKeys } from '../src/input-system';
-import { SpriteAnimation } from '../src/render-engine';
-import { AnimationType } from '../src/utils';
-import { RigidCircleComponent, RigidRectangleComponent } from '../src/collision-engine';
+import {
+  SpriteAnimation, RenderComponent, Material, AnimationType,
+} from '../src/render-engine';
+import { TransformComponent } from '../src/utils';
+import { RigidCircleComponent, RigidRectangleComponent } from '../src/physics-system';
 
 export class Rectangle extends GameObject {
   constructor({
@@ -138,7 +139,7 @@ export class MinionMap extends GameObject {
 
 export class Hero extends GameObject {
   constructor({
-    keys = {}, position, size, z,
+    keys = {}, position, size, z, speed,
   } = {}) {
     super();
     this.components.push(new RenderComponent({
@@ -151,7 +152,9 @@ export class Hero extends GameObject {
       size: size || [9, 12],
       z,
     }));
-    this.components.push(new MovementComponent({ speed: 0.3 }));
+    if (!speed || speed > 0) {
+      this.components.push(new MovementComponent({ speed: speed || 0.3 }));
+    }
     this.components.push(new MovementKeysComponent({
       right: KeyboardKeys.D,
       left: KeyboardKeys.A,
