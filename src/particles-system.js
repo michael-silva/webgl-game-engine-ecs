@@ -31,10 +31,10 @@ export class ParticlePhysicsSystem {
       vec2.scale(particle.velocity, particle.velocity, particle.drag);
       vec2.scaleAndAdd(transform.position, transform.position, particle.velocity, frameTime);
       rigids.forEach(([shape, shapeTransform]) => {
-        if (shape.rigidType === RigidType.RigidCircle) {
+        if (!shape.particleIgnore && shape.rigidType === RigidType.RigidCircle) {
           this._resolveCirclePos(transform, shape, shapeTransform);
         }
-        else if (shape.rigidType === RigidType.RigidRectangle) {
+        else if (!shape.particleIgnore && shape.rigidType === RigidType.RigidRectangle) {
           this._resolveRectPos(transform, shape, shapeTransform);
         }
       });
@@ -138,5 +138,46 @@ export class ParticleUpdateSystem {
       transform.size = [s, s];
       if (particle.cyclesToLive <= 0) e.destroy();
     });
+  }
+}
+
+export class ParticleEmitterComponent {
+  constructor({
+    minToEmit, remains, position, createParticle,
+  }) {
+    this.minToEmit = minToEmit === undefined ? 5 : minToEmit;
+    this.position = position;
+    this.numRemains = remains;
+    this.createParticle = createParticle;
+  }
+}
+
+export class ParticleEmitterSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const emitter = e.components.find((c) => c instanceof ParticleEmitterComponent);
+      if (!emitter) return;
+      this._emitParticles(emitter, entities);
+      if (emitter.numRemains <= 0) e.destroy();
+    });
+  }
+
+  _emitParticles(emitter, entities) {
+    let numToEmit = 0;
+    if (emitter.numRemains < emitter.minToEmit) {
+      // If only a few are left, emits all of them
+      numToEmit = emitter.numRemains;
+    }
+    else {
+      // Otherwise, emits about 20% of what's left
+      numToEmit = Math.random() * 0.2 * emitter.numRemains;
+    }
+    // Left for future emitting.
+    // eslint-disable-next-line no-param-reassign
+    emitter.numRemains -= numToEmit;
+    for (let i = 0; i < numToEmit; i++) {
+      const p = emitter.createParticle(...emitter.position);
+      entities.push(p);
+    }
   }
 }

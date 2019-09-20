@@ -17,11 +17,12 @@ import {
   CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
 } from '../src/physics-system';
 import {
-  CameraUtils, TransformUtils, BoundingUtils, TransformComponent,
+  CameraUtils, TransformUtils, BoundingUtils, TransformComponent, RenderUtils,
 } from '../src/utils';
 import { RenderComponent, TextComponent, ParticleRenderComponent } from '../src/render-engine';
 import {
-  ParticleLifecycleComponent, ParticlePhysicsSystem, ParticleUpdateSystem, ParticleShapeComponent,
+  ParticleLifecycleComponent, ParticlePhysicsSystem, ParticleUpdateSystem,
+  ParticleShapeComponent, ParticleEmitterSystem, ParticleEmitterComponent,
 } from '../src/particles-system';
 
 
@@ -62,6 +63,8 @@ export class Wall extends GameObject {
 }
 
 export class DyePack extends GameObject {
+  static SHAPE_GROUP = 'dyepacks';
+
   constructor({ position }) {
     super();
     this.components.push(new RenderComponent({
@@ -73,7 +76,12 @@ export class DyePack extends GameObject {
       size: [4, 3],
     }));
     const rigid = new RigidCircleComponent({
-      radius: 1.5, mass: 0.1, acceleration: [0, 0], drawColor: [0, 1, 0, 1], drawBounds: true,
+      radius: 1.5,
+      mass: 0.1,
+      acceleration: [0, 0],
+      drawColor: [0, 1, 0, 1],
+      drawBounds: true,
+      group: DyePack.SHAPE_GROUP,
     });
     this.components.push(rigid);
   }
@@ -285,20 +293,73 @@ class PhysicsControlSystem {
   }
 }
 
+class Explosion extends GameObject {
+  constructor({ position, size = 1 }) {
+    super();
+    this.components.push(new ParticleEmitterComponent({
+      position,
+      remains: 200 * size,
+      createParticle: this._createParticle.bind(this),
+    }));
+  }
+
+  _createParticle(atX, atY) {
+    const cyclesToLive = 30 + Math.random() * 200;
+    // size of the particle
+    const r = 5.5 + Math.random() * 0.5;
+    // final color
+    const fr = 3.5 + Math.random();
+    const fg = 0.4 + 0.1 * Math.random();
+    const fb = 0.3 + 0.1 * Math.random();
+    // velocity on the particle
+    const fx = 10 - 20 * Math.random();
+    const fy = 10 * Math.random();
+    // size delta
+    const sizeDelta = 0.98;
+    const particle = new Particle({
+      position: [atX, atY],
+      size: [r, r],
+      velocity: [fx, fy],
+      sizeDelta,
+      cyclesToLive,
+    });
+
+    this._setFinalColor(particle, [fr, fg, fb, 0.6]);
+    return particle;
+  }
+
+  _setFinalColor(particle, value) {
+    const renderable = particle.components.find((c) => c instanceof ParticleRenderComponent);
+    const lifecycle = particle.components.find((c) => c instanceof ParticleLifecycleComponent);
+    vec4.sub(lifecycle.deltaColor, value, renderable.color);
+    if (lifecycle.cyclesToLive !== 0) {
+      vec4.scale(lifecycle.deltaColor, lifecycle.deltaColor, 1 / lifecycle.cyclesToLive);
+    }
+  }
+}
+
 class PointTargetSystem {
-  run({ entities }) {
+  run({ entities }, game) {
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
+      const renderable = e.components.find((c) => c instanceof RenderComponent);
       const pointTarget = e.components.find((c) => c instanceof PointTargetComponent);
       const movement = e.components.find((c) => c instanceof MovementComponent);
-      if (!pointTarget || !transform || !movement) return;
+      if (!pointTarget || !transform || !movement || !renderable) return;
       const target = entities.find((t) => t.id === pointTarget.targetId);
       if (!target) return;
       const targetTransform = target.components.find((c) => c instanceof TransformComponent);
-      if (!targetTransform) return;
+      const targetRenderable = target.components.find((c) => c instanceof RenderComponent);
+      if (!targetTransform || !targetRenderable) return;
       const isCollided = BoundingUtils.intersectsBound(targetTransform, transform);
       if (isCollided) {
-        e.destroy();
+        const { gl } = game.renderState;
+        const pixelTouch = this._getPixelTouch(gl, game.resourceMap, transform, renderable,
+          targetTransform, targetRenderable);
+        if (pixelTouch) {
+          e.destroy();
+          entities.push(new Explosion({ position: pixelTouch }));
+        }
       }
       else {
         const rotation = TransformUtils.rotateObjPointTo(
@@ -311,6 +372,21 @@ class PointTargetSystem {
         transform.rotationInRadians += rotation.radians;
       }
     });
+  }
+
+  _getPixelTouch(gl, resourceMap, transform, renderable, otherTransform, otherRenderable) {
+    const textureInfo = resourceMap[renderable.texture].asset;
+    const otherTextureInfo = resourceMap[otherRenderable.texture].asset;
+    RenderUtils.readColorArray(gl, textureInfo);
+    RenderUtils.readColorArray(gl, otherTextureInfo);
+    return RenderUtils.pixelTouches(
+      transform,
+      textureInfo,
+      renderable.sprite,
+      otherTransform,
+      otherTextureInfo,
+      otherRenderable.sprite,
+    );
   }
 }
 
@@ -382,7 +458,7 @@ export default (game) => {
 
   const hero = new Hero({ position: [16, 22], size: [18, 24], speed: -1 });
   hero.components.push(new TargetComponent());
-  hero.components.push(new RigidRectangleComponent({
+  const heroRect = new RigidRectangleComponent({
     mass: 0.7,
     restitution: 0.3,
     width: 16,
@@ -390,7 +466,10 @@ export default (game) => {
     drawBounds: true,
     acceleration: [0, -50],
     drawColor: [0, 1, 0, 1],
-  }));
+    exceptions: [DyePack.SHAPE_GROUP],
+  });
+  heroRect.particleIgnore = true;
+  hero.components.push(heroRect);
   hero.components.push(new RotationKeysComponent({
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
@@ -416,6 +495,7 @@ export default (game) => {
   scene.use(new MouseMoveRigidShapesSystem());
   scene.use(new PointTargetSystem());
   scene.use(new MovementSystem());
+  scene.use(new ParticleEmitterSystem());
   scene.use(new ParticleUpdateSystem());
   scene.use(new ParticlePhysicsSystem());
   scene.use(new PhysicsControlSystem());

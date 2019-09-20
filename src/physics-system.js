@@ -20,8 +20,12 @@ export class RigidShapeComponent {
   }
 
   constructor({
-    padding, velocity, mass, restitution, friction, acceleration, drawBounds, drawColor,
+    padding, velocity, mass, restitution, friction,
+    acceleration, drawBounds, drawColor,
+    exceptions, group,
   }) {
+    this.group = group;
+    this.exceptions = exceptions || [];
     this.padding = padding || 0.25; // size of the position mark
     this.drawBounds = drawBounds || false;
     this.drawColor = drawColor || [1, 0, 0, 1];
@@ -209,6 +213,7 @@ export class CollisionUtils {
 
   static collidedShapes(shape, transform, otherShape, otherTransform) {
     let collision = null;
+    if (otherShape.group && shape.exceptions.includes(otherShape.group)) return null;
     if (otherShape.rigidType === shape.rigidType) {
       if (shape.rigidType === RigidType.RigidCircle) {
         collision = CollisionUtils.collidedTwoCircles(shape, transform, otherShape, otherTransform);
