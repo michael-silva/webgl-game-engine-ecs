@@ -25,7 +25,6 @@ export class MovementKeysComponent {
   }
 }
 
-
 export class MovementSystem {
   run({ entities }) {
     entities.forEach((e) => {

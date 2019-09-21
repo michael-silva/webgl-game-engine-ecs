@@ -1,3 +1,4 @@
+import { vec2 } from 'gl-matrix';
 import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
@@ -7,7 +8,7 @@ import {
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
-  KeyboardRotationSystem, MovementSystem, MovementComponent, CameraPanComponent,
+  KeyboardRotationSystem, MovementSystem, CameraPanComponent,
   CameraPanSystem, CameraBoundarySystem, InterpolationSystem,
   WorldCoordinateInterpolation, Interpolation, InterpolationArray,
 } from './shared';
@@ -18,6 +19,55 @@ import {
   ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
   Material, Light, LightType, BackgroundTypes,
 } from '../src/render-engine';
+
+export class ParallaxMovementComponent {
+  constructor({
+    speed, direction, camIndex, scale,
+  }) {
+    this.speed = speed;
+    this.direction = direction || [0, 1];
+    this.camIndex = camIndex;
+    this.scale = scale;
+    this.wcCenterCache = [0, 0];
+  }
+}
+
+export class ParallaxMovementSystem {
+  run({ entities }, { scenes, currentScene }) {
+    entities.forEach((e) => {
+      const transform = e.components.find((c) => c instanceof TransformComponent);
+      const movement = e.components.find((c) => c instanceof ParallaxMovementComponent);
+      if (!transform || !movement) return;
+      const [x, y] = transform.position;
+      const [dx, dy] = movement.direction;
+
+      const { cameras } = scenes[currentScene];
+      const camera = cameras[movement.camIndex];
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      this._refPosUpdate(transform, movement, worldCoordinate);
+
+      const mx = dx * movement.speed * movement.parallaxScale;
+      const my = dy * movement.speed * movement.parallaxScale;
+      transform.position = [x + mx, y + my];
+    });
+  }
+
+  _refPosUpdate(transform, movement, worldCoordinate) {
+    movement.parallaxScale = 1 / movement.scale;
+    // now check for reference movement
+    const deltaT = [0, 0];
+    vec2.sub(deltaT, movement.wcCenterCache, worldCoordinate.center);
+    this._setWCTranslationBy(transform, movement, deltaT);
+    // now update WC center ref position
+    vec2.sub(movement.wcCenterCache, movement.wcCenterCache, deltaT);
+  }
+
+  _setWCTranslationBy(transform, movement, delta) {
+    const f = (1 - movement.parallaxScale);
+    transform.position[0] += -delta[0] * f;
+    transform.position[1] += -delta[1] * f;
+  }
+}
 
 export default (game) => {
   const scene = game.createScene();
@@ -61,7 +111,7 @@ export default (game) => {
     transform: {
       size: [30, 30],
       position: [0, 0],
-      z: -20,
+      z: -10,
     },
     render: {
       type: BackgroundTypes.Tiled,
@@ -74,14 +124,20 @@ export default (game) => {
       }),
     },
   });
+  bg1.components.push(new ParallaxMovementComponent({
+    direction: [0, -1],
+    speed: 0.1,
+    camIndex: 0,
+    scale: 5,
+  }));
   scene.addEntity(bg1);
 
   const bg2 = new Background({
     shadowReceiver: true,
     transform: {
-      size: [30, 30],
+      size: [25, 25],
       position: [0, 0],
-      z: -10,
+      z: 0,
     },
     render: {
       type: BackgroundTypes.Tiled,
@@ -94,7 +150,12 @@ export default (game) => {
       }),
     },
   });
-  bg2.components.push(new MovementComponent({ direction: [-1, 0], speed: 0.1 }));
+  bg2.components.push(new ParallaxMovementComponent({
+    direction: [0, -1],
+    speed: 0.1,
+    camIndex: 0,
+    scale: 3,
+  }));
   scene.addEntity(bg2);
 
   // the light
@@ -133,7 +194,7 @@ export default (game) => {
     intensity: 5,
     lightType: LightType.SpotLight,
     direction: [-0.02, 0.02, -1],
-    position: [20, 30, 12],
+    position: [40, 30, 12],
     color: [0.5, 0.5, 0.5, 1],
   });
   scene.addLight(light3);
@@ -146,7 +207,7 @@ export default (game) => {
     intensity: 2,
     lightType: LightType.SpotLight,
     direction: [0.02, -0.02, -1],
-    position: [60, 50, 12],
+    position: [60, 40, 12],
     color: [0.8, 0.8, 0.2, 1],
   });
   scene.addLight(light4);
@@ -169,7 +230,7 @@ export default (game) => {
   });
   scene.addEntity(block2);
 
-  const minionLeft = new MinionMap({ size: [9, 7.2], position: [25, 30], z: 2 });
+  const minionLeft = new MinionMap({ size: [9, 7.2], position: [25, 40], z: 2 });
   minionLeft.components.push(new ShadowReceiverComponent());
   minionLeft.components.push(new ShadowCasterComponent());
   scene.addEntity(minionLeft);
@@ -180,7 +241,7 @@ export default (game) => {
   minionLeft.components.push(new ShadowCasterComponent());
   scene.addEntity(minionRight);
 
-  const hero = new HeroMap({ position: [20, 30], size: [9, 12], z: 5 });
+  const hero = new HeroMap({ position: [40, 30], size: [9, 12], z: 5 });
   hero.components.push(new CameraPanComponent({ camIndex: 0, zone: 0.9 }));
   hero.components.push(new ShadowReceiverComponent());
   hero.components.push(new ShadowCasterComponent());
@@ -191,7 +252,7 @@ export default (game) => {
   scene.addEntity(hero);
 
   const hero2 = new Hero({
-    position: [60, 50],
+    position: [60, 40],
     z: 5,
     size: [9, 12],
     keys: {
@@ -201,9 +262,29 @@ export default (game) => {
       down: KeyboardKeys.Down,
     },
   });
-  hero2.components.push(new CameraPanComponent({ camIndex: 0, zone: 0.7 }));
   hero2.components.push(new ShadowCasterComponent());
   scene.addEntity(hero2);
+
+  const bg3 = new Background({
+    transform: {
+      size: [30, 30],
+      position: [0, 0],
+    },
+    render: {
+      type: BackgroundTypes.Tiled,
+      illumination: false,
+      color: [0.8, 0.8, 0.8, 0],
+      texture: './assets/images/bgLayer.png',
+      normalMap: './assets/images/bgLayer_normal.png',
+    },
+  });
+  bg3.components.push(new ParallaxMovementComponent({
+    direction: [0, 1],
+    speed: 0,
+    camIndex: 0,
+    scale: 3,
+  }));
+  scene.addEntity(bg3);
 
   const message = new GameObject();
   message.components.push(
@@ -221,6 +302,7 @@ export default (game) => {
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
   scene.use(new MovementSystem());
+  scene.use(new ParallaxMovementSystem());
   scene.use(new CameraBoundarySystem());
   scene.use(new CameraPanSystem());
 };

@@ -108,7 +108,7 @@ class RenderUtils {
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
     const {
       color, texture, sprite,
-      normalMap, material,
+      normalMap, material, illumination,
     } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
     const shader = optShader || RenderUtils.selectShader(shaders, textureAsset, renderable);
@@ -130,6 +130,7 @@ class RenderUtils {
       else {
         RenderUtils.activateTextureShader(gl, textureBuffer, shader);
       }
+
       if (shader.lights) {
         const scene = scenes[currentScene];
         RenderUtils.activateLightsArray(gl, shader, scene);
@@ -138,7 +139,8 @@ class RenderUtils {
             if (!shader.lights[i]) {
               shader.lights[i] = RenderUtils.initializeShaderLight(gl, shader, i);
             }
-            RenderUtils.activateLight(gl, shader.lights[i], light, camera);
+            RenderUtils.activateLight(gl, shader.lights[i],
+              { ...light, isOn: illumination }, camera);
           }
         });
       }
@@ -146,7 +148,8 @@ class RenderUtils {
         if (!shader.lightShader) {
           shader.lightShader = RenderUtils.initializeShaderLight(gl, shader, 0);
         }
-        RenderUtils.activateLight(gl, shader.lightShader, shader.light, camera);
+        RenderUtils.activateLight(gl, shader.lightShader,
+          { ...shader.light, isOn: illumination }, camera);
       }
 
       if ((normalMap && resourceMap[normalMap] && resourceMap[normalMap].loaded)
@@ -393,8 +396,9 @@ export class BackgroundRenderComponent {
     color = Color.White, texture,
     textureAsset, sprite,
     normalMap, normapMapAsset,
-    material, type,
+    material, type, illumination = true,
   } = {}) {
+    this.illumination = illumination;
     this.type = type || BackgroundTypes.Normal;
     this.color = color;
     this.texture = texture;
@@ -412,8 +416,9 @@ export class RenderComponent {
     color = Color.White, texture,
     textureAsset, sprite,
     normalMap, normapMapAsset,
-    material,
+    material, illumination = true,
   } = {}) {
+    this.illumination = illumination;
     this.color = color;
     this.texture = texture;
     this.textureAsset = textureAsset;
