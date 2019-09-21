@@ -10,6 +10,8 @@ import { InputEngine } from './input-system';
 
 // @component
 export class GameWorldEntity {
+  defaultLayer = 0;
+
   resources = [];
 
   entities = [];
@@ -82,7 +84,7 @@ export class GameEntity {
 
 // @entity
 export class GameObject {
-  components = []
+  components = [];
 
   destroy() {
     this._destroyed = true;
@@ -121,12 +123,16 @@ class GameWorld {
     entity.id = GameWorld._nextId;
   }
 
+  set defaultLayer(value) { this._world.defaultLayer = value; }
+
   constructor(world) {
     this._world = world;
   }
 
-  addEntity(entity) {
+  addEntity(entity, layer) {
     GameWorld.setEntityId(entity);
+    // eslint-disable-next-line no-param-reassign
+    entity.layer = layer || this._world.defaultLayer;
     this._world.entities.push(entity);
   }
 

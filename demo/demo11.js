@@ -20,6 +20,12 @@ import {
   Material, Light, LightType, BackgroundTypes,
 } from '../src/render-engine';
 
+const LevelLayers = Object.freeze({
+  Background: 0,
+  Actors: 1,
+  Front: 2,
+});
+
 export class ParallaxMovementComponent {
   constructor({
     speed, direction, camIndex, scale,
@@ -53,6 +59,7 @@ export class ParallaxMovementSystem {
   }
 
   _refPosUpdate(transform, movement, worldCoordinate) {
+    // eslint-disable-next-line no-param-reassign
     movement.parallaxScale = 1 / movement.scale;
     // now check for reference movement
     const deltaT = [0, 0];
@@ -64,13 +71,17 @@ export class ParallaxMovementSystem {
 
   _setWCTranslationBy(transform, movement, delta) {
     const f = (1 - movement.parallaxScale);
+    // eslint-disable-next-line no-param-reassign
     transform.position[0] += -delta[0] * f;
+    // eslint-disable-next-line no-param-reassign
     transform.position[1] += -delta[1] * f;
   }
 }
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.getWorld();
+  world.defaultLayer = LevelLayers.Actors;
   scene.setGlobalLight({ ambientColor: [0.3, 0.3, 0.3, 1] });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
@@ -130,7 +141,7 @@ export default (game) => {
     camIndex: 0,
     scale: 5,
   }));
-  scene.addEntity(bg1);
+  world.addEntity(bg1, LevelLayers.Background);
 
   const bg2 = new Background({
     shadowReceiver: true,
@@ -156,7 +167,29 @@ export default (game) => {
     camIndex: 0,
     scale: 3,
   }));
-  scene.addEntity(bg2);
+  world.addEntity(bg2, LevelLayers.Background);
+
+  const bg3 = new Background({
+    transform: {
+      size: [30, 30],
+      position: [0, 0],
+      z: 10,
+    },
+    render: {
+      type: BackgroundTypes.Tiled,
+      illumination: false,
+      color: [0.8, 0.8, 0.8, 0],
+      texture: './assets/images/bgLayer.png',
+      normalMap: './assets/images/bgLayer_normal.png',
+    },
+  });
+  bg3.components.push(new ParallaxMovementComponent({
+    direction: [0, 1],
+    speed: 0,
+    camIndex: 0,
+    scale: 3,
+  }));
+  world.addEntity(bg3, LevelLayers.Front);
 
   // the light
   const light1 = new Light({
@@ -264,27 +297,6 @@ export default (game) => {
   });
   hero2.components.push(new ShadowCasterComponent());
   scene.addEntity(hero2);
-
-  const bg3 = new Background({
-    transform: {
-      size: [30, 30],
-      position: [0, 0],
-    },
-    render: {
-      type: BackgroundTypes.Tiled,
-      illumination: false,
-      color: [0.8, 0.8, 0.8, 0],
-      texture: './assets/images/bgLayer.png',
-      normalMap: './assets/images/bgLayer_normal.png',
-    },
-  });
-  bg3.components.push(new ParallaxMovementComponent({
-    direction: [0, 1],
-    speed: 0,
-    camIndex: 0,
-    scale: 3,
-  }));
-  scene.addEntity(bg3);
 
   const message = new GameObject();
   message.components.push(

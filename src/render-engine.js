@@ -1040,9 +1040,17 @@ export class RenderEngine {
         this.systems.forEach((system) => {
           if (system.preRender) system.preRender(world, camera, game);
         });
+        const layers = [];
         world.entities.forEach((e) => {
-          this.systems.forEach((system) => {
-            if (system.render) system.render(e, camera, game);
+          if (e.layer === undefined) e.layer = world.defaultLayer;
+          if (!layers[e.layer]) layers[e.layer] = [];
+          layers[e.layer].push(e);
+        });
+        layers.forEach((entities) => {
+          entities.forEach((e) => {
+            this.systems.forEach((system) => {
+              if (system.render) system.render(e, camera, game);
+            });
           });
         });
         this.systems.forEach((system) => {
