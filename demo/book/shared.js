@@ -1,11 +1,11 @@
 /* eslint-disable max-classes-per-file */
 import { vec2 } from 'gl-matrix';
-import { AudioComponent } from '../src/audio-system';
+import { AudioComponent } from '@wge/core/audio-system';
 import {
   TransformUtils, BoundingUtils, RenderUtils, TransformComponent, CameraUtils,
-} from '../src/utils';
-import { WorldCoordinateComponent, ViewportComponent } from '../src/camera';
-import { RenderComponent } from '../src/render-engine';
+} from '@wge/core/utils';
+import { WorldCoordinateComponent, ViewportComponent } from '@wge/core/camera';
+import { RenderComponent } from '@wge/core/render-engine';
 
 export class MovementComponent {
   constructor({ speed, direction }) {

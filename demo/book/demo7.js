@@ -2,24 +2,24 @@
 
 import { vec2 } from 'gl-matrix';
 import {
+  BoundingUtils, RenderUtils, TransformUtils, CameraUtils, TransformComponent,
+} from '@wge/core/utils';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import {
+  ViewportComponent, WorldCoordinateComponent, CameraEntity,
+} from '@wge/core/camera';
+import { GameObject } from '@wge/core';
+import { RenderComponent, TextComponent } from '@wge/core/render-engine';
+import {
+  Minion, Hero, Brain, Portal, Background,
+} from './objects';
+import {
   MovementSystem, KeyboardMovementSystem, KeyboardRotationSystem,
   MovementComponent, RotationKeysComponent, MovementKeysComponent,
   Interpolation, InterpolationArray, WorldCoordinateInterpolation,
   ClampAtBoundaryComponent, CameraPanComponent, CameraBoundarySystem,
   CameraPanSystem, InterpolationSystem,
 } from './shared';
-import {
-  BoundingUtils, RenderUtils, TransformUtils, CameraUtils, TransformComponent,
-} from '../src/utils';
-import {
-  Minion, Hero, Brain, Portal, Background,
-} from './objects';
-import { KeyboardKeys, MouseButton } from '../src/input-system';
-import {
-  ViewportComponent, WorldCoordinateComponent, CameraEntity,
-} from '../src/camera';
-import { GameObject } from '../src';
-import { RenderComponent, TextComponent } from '../src/render-engine';
 
 class TargetComponent {
   constructor({ id }) {

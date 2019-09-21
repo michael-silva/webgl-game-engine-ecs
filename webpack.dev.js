@@ -11,5 +11,8 @@ module.exports = merge(config, {
     watchContentBase: true,
     publicPath: '/dist/',
   },
-  entry: './demo/index.js',
+  entry: {
+    demos: './demo/index.js',
+    books: './demo/book/index.js',
+  },
 });

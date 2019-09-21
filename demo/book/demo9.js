@@ -2,23 +2,23 @@
 import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
-} from '../src/camera';
+} from '@wge/core/camera';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import { GameObject } from '@wge/core';
 import {
-  Hero, MinionMap,
-} from './objects';
+  CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
+} from '@wge/core/physics-system';
+import {
+  CameraUtils, TransformUtils, BoundingUtils, TransformComponent,
+} from '@wge/core/utils';
+import { RenderComponent, TextComponent } from '@wge/core/render-engine';
 import {
   RotationKeysComponent,
   KeyboardRotationSystem, MovementKeysComponent, MovementComponent, MovementSystem,
 } from './shared';
-import { KeyboardKeys, MouseButton } from '../src/input-system';
-import { GameObject } from '../src';
 import {
-  CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
-} from '../src/physics-system';
-import {
-  CameraUtils, TransformUtils, BoundingUtils, TransformComponent,
-} from '../src/utils';
-import { RenderComponent, TextComponent } from '../src/render-engine';
+  Hero, MinionMap,
+} from './objects';
 
 
 export class Platform extends GameObject {

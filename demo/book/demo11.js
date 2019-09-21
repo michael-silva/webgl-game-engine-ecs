@@ -2,23 +2,23 @@ import { vec2 } from 'gl-matrix';
 import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
-} from '../src/camera';
+} from '@wge/core/camera';
+import { KeyboardKeys } from '@wge/core/input-system';
+import { GameObject } from '@wge/core';
+import { TransformComponent } from '@wge/core/utils';
 import {
-  Rectangle, MinionMap, HeroMap, Hero, Background,
-} from './objects';
+  ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
+  Material, Light, LightType, BackgroundTypes,
+} from '@wge/core/render-engine';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
   KeyboardRotationSystem, MovementSystem, CameraPanComponent,
   CameraPanSystem, CameraBoundarySystem, InterpolationSystem,
   WorldCoordinateInterpolation, Interpolation, InterpolationArray,
 } from './shared';
-import { KeyboardKeys } from '../src/input-system';
-import { GameObject } from '../src';
-import { TransformComponent } from '../src/utils';
 import {
-  ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
-  Material, Light, LightType, BackgroundTypes,
-} from '../src/render-engine';
+  Rectangle, MinionMap, HeroMap, Hero, Background,
+} from './objects';
 
 const LevelLayers = Object.freeze({
   Background: 0,

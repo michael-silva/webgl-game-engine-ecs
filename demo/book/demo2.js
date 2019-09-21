@@ -1,11 +1,11 @@
-import { RenderComponent } from '../src/render-engine';
+import { RenderComponent } from '@wge/core/render-engine';
+import { AudioComponent, AudioSystem } from '@wge/core/audio-system';
+import { SceneParser } from '@wge/core/scene-parser';
+import { TransformComponent } from '@wge/core/utils';
 import {
   MovementComponent, MovementKeysComponent, KeyboardMovementSystem,
   MovementSystem, MovementChangeLevelSystem, MovementAudioSystem,
 } from './shared';
-import { AudioComponent, AudioSystem } from '../src/audio-system';
-import { SceneParser } from '../src/scene-parser';
-import { TransformComponent } from '../src/utils';
 
 export default (game, data) => {
   const parser = new SceneParser();

@@ -3,27 +3,27 @@ import { vec4 } from 'gl-matrix';
 import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
-} from '../src/camera';
+} from '@wge/core/camera';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import { GameObject } from '@wge/core';
 import {
-  Hero, MinionMap,
-} from './objects';
+  CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
+} from '@wge/core/physics-system';
+import {
+  CameraUtils, TransformUtils, BoundingUtils, TransformComponent, RenderUtils,
+} from '@wge/core/utils';
+import { RenderComponent, TextComponent, ParticleRenderComponent } from '@wge/core/render-engine';
+import {
+  ParticleLifecycleComponent, ParticlePhysicsSystem, ParticleUpdateSystem,
+  ParticleShapeComponent, ParticleEmitterSystem, ParticleEmitterComponent,
+} from '@wge/core/particles-system';
 import {
   RotationKeysComponent,
   KeyboardRotationSystem, MovementKeysComponent, MovementComponent, MovementSystem,
 } from './shared';
-import { KeyboardKeys, MouseButton } from '../src/input-system';
-import { GameObject } from '../src';
 import {
-  CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
-} from '../src/physics-system';
-import {
-  CameraUtils, TransformUtils, BoundingUtils, TransformComponent, RenderUtils,
-} from '../src/utils';
-import { RenderComponent, TextComponent, ParticleRenderComponent } from '../src/render-engine';
-import {
-  ParticleLifecycleComponent, ParticlePhysicsSystem, ParticleUpdateSystem,
-  ParticleShapeComponent, ParticleEmitterSystem, ParticleEmitterComponent,
-} from '../src/particles-system';
+  Hero, MinionMap,
+} from './objects';
 
 
 export class Platform extends GameObject {
