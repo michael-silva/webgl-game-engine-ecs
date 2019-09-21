@@ -6,8 +6,7 @@ import {
   CameraUtils, TransformUtils, Color, FontUtils, TransformComponent,
 } from './utils';
 import {
-  WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
-  BackgroundTypes, CameraViewport,
+  WorldCoordinateComponent, ViewportComponent, CameraViewport, BackgroundComponent,
 } from './camera';
 import { RigidRectangleComponent, RigidCircleComponent } from './physics-system';
 import {
@@ -382,6 +381,31 @@ export class Material {
   }
 }
 
+export const BackgroundTypes = Object.freeze({
+  Fixed: 'static',
+  Normal: 'normal',
+  Tiled: 'tiled',
+});
+
+// @component
+export class BackgroundRenderComponent {
+  constructor({
+    color = Color.White, texture,
+    textureAsset, sprite,
+    normalMap, normapMapAsset,
+    material, type,
+  } = {}) {
+    this.type = type || BackgroundTypes.Normal;
+    this.color = color;
+    this.texture = texture;
+    this.textureAsset = textureAsset;
+    this.normalMap = normalMap;
+    this.normapMapAsset = normapMapAsset;
+    this.sprite = sprite;
+    this.material = material;
+  }
+}
+
 // @component
 export class RenderComponent {
   constructor({
@@ -648,6 +672,8 @@ export class TextureRenderSystem {
 export class ShadowRenderUtils {
   static renderReceiverShadow(game, camera, receiver, transform, renderable, casters) {
     const { shaders, gl } = game.renderState;
+    const { texture } = renderable;
+    if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
     // A: draw receiver as a regular renderable
     ShadowRenderUtils.shadowRecieverStencilOn(gl, receiver); // B1;
     const shader = shaders.shadowReceiverShader;
@@ -691,7 +717,6 @@ export class ShadowRenderUtils {
     // eslint-disable-next-line no-param-reassign
     casterRenderable.color = [...color];
   }
-
 
   static _computeShadowGeometry(light, caster, casterTransform, receiverTransform) {
     // vector from light to caster
@@ -817,8 +842,7 @@ export class ParticleRenderSystem {
   }
 }
 
-// @system
-export class CameraBackgroundRenderSystem {
+export class BackgroundRenderSystem {
   preRender(world, camera, game) {
     const background = camera.components.find((c) => c instanceof BackgroundComponent);
     const { texture, type } = background;
@@ -847,6 +871,150 @@ export class CameraBackgroundRenderSystem {
   }
 }
 
+// @system
+export class BackgroundRenderSystem2 {
+  preRender(world) {
+    this.casters = world.entities
+      .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
+  }
+
+  render(entity, camera, game) {
+    const { renderState } = game;
+    const renderable = entity.components.find((c) => c instanceof BackgroundRenderComponent);
+    const transform = entity.components.find((c) => c instanceof TransformComponent);
+    if (!renderable || !transform) return;
+    const { texture } = renderable;
+    const shader = texture
+      ? renderState.shaders.textureShader
+      : renderState.shaders.simpleShader;
+    if (!shader || !shader.modelTransform) return;
+    if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
+
+    this._renderEntity(game, camera, renderable, transform);
+
+    const shadowReceiver = entity.components.find((c) => c instanceof ShadowReceiverComponent);
+    if (shadowReceiver && this.casters.length > 0) {
+      this._renderReceiverShadow(game, camera, shadowReceiver,
+        transform, renderable, this.casters);
+    }
+  }
+
+  _renderEntity(game, camera, renderable, transform, shader) {
+    if (renderable.type === BackgroundTypes.Tiled) {
+      this._drawTile(game, camera, transform, renderable, shader);
+    }
+    else {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const position = renderable.type !== BackgroundTypes.Fixed
+        ? transform.position
+        : [
+          transform.position[0] + worldCoordinate.center[0],
+          transform.position[1] + worldCoordinate.center[1],
+        ];
+      RenderUtils.renderEntity(game, camera, renderable, { ...transform, position }, shader);
+    }
+  }
+
+  _drawTile(game, camera, transform, renderable, shader) {
+    const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+    const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+    // Step A: Compute the positions and dimensions of tiling object.
+    const w = transform.size[0];
+    const h = transform.size[1];
+    const pos = transform.position;
+    const left = pos[0] - (w / 2);
+    let right = left + w;
+    let top = pos[1] + (h / 2);
+    const bottom = top - h;
+
+    // Step B: Get the world positions and dimensions of the drawing camera.
+    const wcHeight = CameraUtils.getWcHeight(worldCoordinate, viewport.array);
+    const wcPos = worldCoordinate.center;
+    const wcLeft = wcPos[0] - (worldCoordinate.width / 2);
+    const wcRight = wcLeft + worldCoordinate.width;
+    const wcBottom = wcPos[1] - (wcHeight / 2);
+    const wcTop = wcBottom + wcHeight;
+
+    // Step C: Determine the offset to the camera window's lower left corner.
+    let dx = 0; let dy = 0; // offset to the lower left corner
+    // left/right boundary?
+    if (right < wcLeft) { // left of WC left
+      dx = Math.ceil((wcLeft - right) / w) * w;
+    }
+    else if (left > wcLeft) { // not touching the left side
+      dx = -Math.ceil((left - wcLeft) / w) * w;
+    }
+    // top/bottom boundary
+    if (top < wcBottom) { // Lower than the WC bottom
+      dy = Math.ceil((wcBottom - top) / h) * h;
+    }
+    else if (bottom > wcBottom) { // not touching the bottom
+      dy = -Math.ceil((bottom - wcBottom) / h) * h;
+    }
+
+    // Step D: Save the original position of the tiling object.
+    const sX = pos[0];
+    const sY = pos[1];
+
+    // Step E: Offset tiling object and modify the related position variables.
+    // eslint-disable-next-line no-param-reassign
+    transform.position[0] += dx;
+    // eslint-disable-next-line no-param-reassign
+    transform.position[1] += dy;
+    right = pos[0] + (w / 2);
+    top = pos[1] + (h / 2);
+
+    // Step F: Determine the number of times to tile in the x and y directions.
+    let nx = 1; let ny = 1; // number of times to draw in the x and y directions
+    nx = Math.ceil((wcRight - right) / w);
+    ny = Math.ceil((wcTop - top) / h);
+
+    // Step G: Loop through each location to draw a tile
+    let cx = nx;
+    const xPos = pos[0];
+    while (ny >= 0) {
+      cx = nx;
+      pos[0] = xPos;
+      while (cx >= 0) {
+        RenderUtils.renderEntity(game, camera, renderable, transform, shader);
+        // eslint-disable-next-line no-param-reassign
+        transform.position[0] += w;
+        --cx;
+      }
+      // eslint-disable-next-line no-param-reassign
+      transform.position[1] += h;
+      --ny;
+    }
+
+    // Step H: Reset the tiling object to its original position.
+    pos[0] = sX;
+    pos[1] = sY;
+  }
+
+  _renderReceiverShadow(game, camera, receiver, transform, renderable, casters) {
+    const { shaders, gl } = game.renderState;
+    const { texture } = renderable;
+    if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
+    // A: draw receiver as a regular renderable
+    ShadowRenderUtils.shadowRecieverStencilOn(gl, receiver); // B1;
+    const shader = shaders.shadowReceiverShader;
+    this._renderEntity(game, camera, renderable, transform, shader); // B2
+    ShadowRenderUtils.shadowRecieverStencilOff(gl, receiver); // B3
+    // C + D: now draw shadow color to the pixels in the stencil that are switched on
+    for (let i = 0; i < casters.length; i++) {
+      const casterRenderable = casters[i].components.find((c) => c instanceof RenderComponent);
+      const casterTransform = casters[i].components.find((c) => c instanceof TransformComponent);
+      if (casterRenderable && casterTransform && casterTransform.z > transform.z) {
+        const caster = casters[i].components.find((c) => c instanceof ShadowCasterComponent);
+        ShadowRenderUtils.renderShadowCaster(game, camera, transform,
+          caster, casterRenderable, casterTransform);
+      }
+    }
+    // switch off stencil checking
+    ShadowRenderUtils.shadowRecieverStencilDisable(gl);
+  }
+}
+
 export class RenderState {
   constructor({ gl, shaders, buffers }) {
     this.gl = gl;
@@ -857,7 +1025,7 @@ export class RenderState {
 
 // @system
 export class RenderEngine {
-  constructor(canvas) {
+  constructor(canvas, bgColor = [0.8, 0.8, 0.8, 1]) {
     const gl = this._getGL(canvas);
     const buffers = this._initBuffers(gl);
     const shaders = {
@@ -870,15 +1038,17 @@ export class RenderEngine {
       particleShader: new ParticleShader({ gl, buffers }),
     };
 
+    this.bgColor = bgColor;
     this.state = new RenderState({
       gl,
       shaders,
       buffers,
     });
     this.systems = [
-      new CameraBackgroundRenderSystem(),
+      new BackgroundRenderSystem2(),
       new TextureRenderSystem(),
       new TextRenderSystem(),
+      new ShadowRenderSystem(),
       new ParticleRenderSystem(),
       new RigidShapeRenderSystem(),
     ];
@@ -1016,7 +1186,6 @@ export class RenderEngine {
   _setupViewProjection(gl, camera) {
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const viewport = camera.components.find((c) => c instanceof ViewportComponent);
-    const background = camera.components.find((c) => c instanceof BackgroundComponent);
 
     // Step A: Set up and clear the Viewport
     // Step A1: Set up the viewport: area on canvas to be drawn
@@ -1030,7 +1199,7 @@ export class RenderEngine {
     // width of the area to be drawn
     // height of the area to be drawn
     // Step A3: set the color to be clear to black
-    gl.clearColor(...background.color); // set the color to be cleared
+    gl.clearColor(...this.bgColor); // set the color to be cleared
     // this._clearCanvas(gl, background.color);
 
     // Step A4: enable and clear the scissor area
@@ -1041,7 +1210,7 @@ export class RenderEngine {
     // Step B: Set up the View-Projection transform operator
     // Step B1: define the view matrix
     mat4.lookAt(camera.viewMatrix,
-      [worldCoordinate.center[0], worldCoordinate.center[1], camera.cameraZ], // WC center
+      [worldCoordinate.center[0], worldCoordinate.center[1], worldCoordinate.z], // WC center
       [worldCoordinate.center[0], worldCoordinate.center[1], 0], //
       [0, 1, 0]); // orientation
     // Step B2: define the projection matrix
@@ -1077,7 +1246,7 @@ export class RenderEngine {
     camera.renderCache.posInPixelSpace = [
       p[0],
       p[1],
-      CameraUtils.fakeZInPixelSpace(camera, camera.cameraZ),
+      CameraUtils.fakeZInPixelSpace(camera, worldCoordinate.z),
     ];
   }
 }

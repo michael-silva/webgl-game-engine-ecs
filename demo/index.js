@@ -14,6 +14,7 @@ import initDemo7 from './demo7';
 import initDemo8 from './demo8';
 import initDemo9 from './demo9';
 import initDemo10 from './demo10';
+import initDemo11 from './demo11';
 import { FontLoader } from '../src/systems';
 
 export class KeyboardChangeDemoSystem {
@@ -106,9 +107,10 @@ function main() {
       initDemo8(game);
       initDemo9(game);
       initDemo10(game);
+      initDemo11(game);
 
       game.useAfter(new SoundSystem());
-      game.run({ scene: 9 });
+      game.run({ scene: 10 });
       canvas.width = 1280;
       canvas.height = 720;
     });

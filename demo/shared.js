@@ -2,9 +2,9 @@
 import { vec2 } from 'gl-matrix';
 import { AudioComponent } from '../src/audio-system';
 import {
-  TransformUtils, BoundingUtils, RenderUtils, TransformComponent,
+  TransformUtils, BoundingUtils, RenderUtils, TransformComponent, CameraUtils,
 } from '../src/utils';
-import { WorldCoordinateComponent } from '../src/camera';
+import { WorldCoordinateComponent, ViewportComponent } from '../src/camera';
 import { RenderComponent } from '../src/render-engine';
 
 export class MovementComponent {
@@ -252,5 +252,123 @@ export class InterpolationArray extends Interpolation {
   _interpolateValue() {
     this._value = this._value
       .map((v, i) => this._value[i] + (this._rate * (this._finalValue[i] - this._value[i])));
+  }
+}
+
+export class ClampAtBoundaryComponent {
+  constructor({ camIndex, zone }) {
+    this.camIndex = camIndex;
+    this.zone = zone;
+  }
+}
+
+export class CameraBoundarySystem {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
+    cameras.forEach((camera, i) => {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+      if (!worldCoordinate || !viewport) return;
+      entities.forEach((e) => {
+        const transform = e.components.find((c) => c instanceof TransformComponent);
+        const boundary = e.components.find((c) => c instanceof ClampAtBoundaryComponent);
+        if (!transform || !boundary || boundary.camIndex !== i) return;
+        const { zone } = boundary;
+        const wcTransform = CameraUtils.getWcTransform(worldCoordinate, viewport, zone);
+        const status = BoundingUtils.boundCollideStatus(wcTransform, transform);
+        if (!BoundingUtils.isInside(status)) {
+          const pos = transform.position;
+          const [left, right, bottom, top] = status;
+          if (top !== 0) {
+            pos[1] = wcTransform.position[1]
+              + (wcTransform.size[1] / 2) - (transform.size[1] / 2);
+          }
+          if (bottom !== 0) {
+            pos[1] = wcTransform.position[1]
+              - (wcTransform.size[1] / 2) + (transform.size[1] / 2);
+          }
+          if (right !== 0) {
+            pos[0] = wcTransform.position[0]
+              + (wcTransform.size[0] / 2) - (transform.size[0] / 2);
+          }
+          if (left !== 0) {
+            pos[0] = wcTransform.position[0]
+              - (wcTransform.size[0] / 2) + (transform.size[0] / 2);
+          }
+          transform.position = [pos[0], pos[1]];
+        }
+      });
+    });
+  }
+}
+
+export class CameraPanComponent {
+  constructor({ camIndex, zone }) {
+    this.camIndex = camIndex;
+    this.zone = zone;
+  }
+}
+
+export class WorldCoordinateInterpolation {
+  constructor(props) {
+    Object.assign(this, props);
+  }
+}
+
+export class CameraPanSystem {
+  run({ entities }, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
+    cameras.forEach((camera, i) => {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const wcInterpolation = camera.components
+        .find((c) => c instanceof WorldCoordinateInterpolation);
+      const viewport = camera.components.find((c) => c instanceof ViewportComponent);
+      if (!worldCoordinate || !wcInterpolation || !viewport) return;
+      entities.forEach((e) => {
+        const transform = e.components.find((c) => c instanceof TransformComponent);
+        const pan = e.components.find((c) => c instanceof CameraPanComponent);
+        if (!transform || !pan || pan.camIndex !== i) return;
+        const { zone } = pan;
+        const wcTransform = CameraUtils.getWcTransform(worldCoordinate, viewport, zone);
+        const collideStatus = BoundingUtils.boundCollideStatus(wcTransform, transform);
+        if (!BoundingUtils.isInside(collideStatus)) {
+          const newCenter = [...wcTransform.position];
+          const [collideLeft, collideRight, collideBottom, collideTop] = collideStatus;
+          if (collideTop !== 0) {
+            newCenter[1] = transform.position[1]
+              - (wcTransform.size[1] / 2) + (transform.size[1] / 2);
+          }
+          if (collideBottom !== 0) {
+            newCenter[1] = transform.position[1]
+              + (wcTransform.size[1] / 2) - (transform.size[1] / 2);
+          }
+          if (collideRight !== 0) {
+            newCenter[0] = transform.position[0]
+              - (wcTransform.size[0] / 2) + (transform.size[0] / 2);
+          }
+          if (collideLeft !== 0) {
+            newCenter[0] = transform.position[0]
+              + (wcTransform.size[0] / 2) - (transform.size[0] / 2);
+          }
+          wcInterpolation.center.value = newCenter;
+        }
+      });
+    });
+  }
+}
+
+export class InterpolationSystem {
+  run(world, { scenes, currentScene }) {
+    const { cameras } = scenes[currentScene];
+    cameras.forEach((camera) => {
+      const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
+      const wcInterpolation = camera.components
+        .find((c) => c instanceof WorldCoordinateInterpolation);
+      if (!worldCoordinate || !wcInterpolation) return;
+      wcInterpolation.center.update();
+      wcInterpolation.width.update();
+      worldCoordinate.center = wcInterpolation.center.value;
+      worldCoordinate.width = wcInterpolation.width.value;
+    });
   }
 }

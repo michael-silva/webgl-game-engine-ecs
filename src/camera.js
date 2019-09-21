@@ -1,10 +1,5 @@
 import { mat4 } from 'gl-matrix';
 
-export const BackgroundTypes = Object.freeze({
-  Fixed: 'static',
-  Normal: 'normal',
-});
-
 export const CameraViewport = Object.freeze({
   X: 0,
   Y: 1,
@@ -14,24 +9,25 @@ export const CameraViewport = Object.freeze({
 
 export class BackgroundComponent {
   constructor({
-    type, texture, position, size, color,
-    normalMap, material, shadowReceiver,
+    texture, position, size, color,
+    normalMap, material, shadowReceiver, z,
   } = {}) {
-    this.type = type || BackgroundTypes.Normal;
     this.texture = texture;
     this.normalMap = normalMap;
     this.position = position;
     this.material = material;
     this.size = size;
+    this.z = z;
     this.color = color || [0.8, 0.8, 0.8, 1];
     this.shadowReceiver = shadowReceiver;
   }
 }
 
 export class WorldCoordinateComponent {
-  constructor({ center, width }) {
+  constructor({ center, width, z = 10 }) {
     this.center = center;
     this.width = width;
+    this.z = z;
   }
 }
 
@@ -70,8 +66,6 @@ export class CameraEntity {
 
   constructor() {
     this.renderCache = new PerRenderCache();
-    // This is for illumination computation
-    this.cameraZ = 10;
     // transformation matrices
     this.viewMatrix = mat4.create();
     this.projMatrix = mat4.create();

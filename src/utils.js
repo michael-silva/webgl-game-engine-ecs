@@ -155,7 +155,11 @@ export class TextureInfo {
 
 export class CameraUtils {
   static getWcHeight(worldCoordinate, viewportArray) {
-    return worldCoordinate.width * (viewportArray[3] / viewportArray[2]);
+    if (!worldCoordinate.height) {
+      // eslint-disable-next-line no-param-reassign
+      worldCoordinate.height = worldCoordinate.width * (viewportArray[3] / viewportArray[2]);
+    }
+    return worldCoordinate.height;
   }
 
   static getWcTransform(worldCoordinate, viewportArray, zone = 1) {
