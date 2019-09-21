@@ -9,7 +9,7 @@ import {
 import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
 import {
-  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+  CameraEntity, WorldCoordinateComponent, ViewportComponent,
 } from '../src/camera';
 
 class ColorUpdateComponent {
@@ -97,7 +97,6 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [20, 40, 600, 300],
   }));
-  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([

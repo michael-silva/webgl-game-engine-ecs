@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import { vec4 } from 'gl-matrix';
 import {
-  BackgroundComponent, WorldCoordinateComponent,
+  WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
@@ -400,9 +400,6 @@ export default (game) => {
   }));
   camera.components.push(new ViewportComponent({
     array: [0, 0, 1280, 720],
-  }));
-  camera.components.push(new BackgroundComponent({
-    color: [0.8, 0.8, 0.8, 0],
   }));
   scene.addCamera(camera);
 

@@ -3,7 +3,7 @@ import {
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
-  Rectangle, MinionMap, HeroMap, Hero,
+  Rectangle, MinionMap, HeroMap, Hero, Background,
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
@@ -16,19 +16,8 @@ import { GameObject } from '../src';
 import { TransformComponent } from '../src/utils';
 import {
   ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
-  Material, Light, LightType, BackgroundRenderComponent, BackgroundTypes,
+  Material, Light, LightType, BackgroundTypes,
 } from '../src/render-engine';
-
-class Background extends GameObject {
-  constructor({ transform, render, shadowReceiver }) {
-    super();
-    this.components.push(new BackgroundRenderComponent(render));
-    this.components.push(new TransformComponent(transform));
-    if (shadowReceiver) {
-      this.components.push(new ShadowReceiverComponent());
-    }
-  }
-}
 
 export default (game) => {
   const scene = game.createScene();

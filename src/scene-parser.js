@@ -2,7 +2,7 @@ import { GameObject } from '.';
 import { SoundComponent } from './audio-system';
 import {
   CameraEntity, WorldCoordinateComponent,
-  ViewportComponent, BackgroundComponent,
+  ViewportComponent,
 } from './camera';
 
 export class SceneParser {
@@ -43,7 +43,6 @@ export class SceneParser {
     camera.components.push(new ViewportComponent({
       array: viewport,
     }));
-    camera.components.push(new BackgroundComponent());
     return camera;
   }
 

@@ -11,7 +11,7 @@ import {
 } from './objects';
 import { KeyboardKeys } from '../src/input-system';
 import {
-  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+  CameraEntity, WorldCoordinateComponent, ViewportComponent,
 } from '../src/camera';
 import { RenderComponent } from '../src/render-engine';
 
@@ -203,7 +203,6 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 600, 400],
   }));
-  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([

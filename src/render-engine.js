@@ -6,7 +6,7 @@ import {
   CameraUtils, TransformUtils, Color, FontUtils, TransformComponent,
 } from './utils';
 import {
-  WorldCoordinateComponent, ViewportComponent, CameraViewport, BackgroundComponent,
+  WorldCoordinateComponent, ViewportComponent, CameraViewport,
 } from './camera';
 import { RigidRectangleComponent, RigidCircleComponent } from './physics-system';
 import {
@@ -842,37 +842,8 @@ export class ParticleRenderSystem {
   }
 }
 
-export class BackgroundRenderSystem {
-  preRender(world, camera, game) {
-    const background = camera.components.find((c) => c instanceof BackgroundComponent);
-    const { texture, type } = background;
-    if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
-    const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
-    let { position } = background;
-    if (type === BackgroundTypes.Fixed) {
-      position = [
-        position[0] + worldCoordinate.center[0],
-        position[1] + worldCoordinate.center[1],
-      ];
-    }
-    const transform = {
-      size: background.size,
-      position,
-      z: 0,
-    };
-    RenderUtils.renderEntity(game, camera, background, transform);
-
-    const casters = world.entities
-      .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
-    if (background.shadowReceiver && casters.length > 0) {
-      ShadowRenderUtils.renderReceiverShadow(game, camera,
-        background.shadowReceiver, transform, background, casters);
-    }
-  }
-}
-
 // @system
-export class BackgroundRenderSystem2 {
+export class BackgroundRenderSystem {
   preRender(world) {
     this.casters = world.entities
       .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
@@ -1045,7 +1016,7 @@ export class RenderEngine {
       buffers,
     });
     this.systems = [
-      new BackgroundRenderSystem2(),
+      new BackgroundRenderSystem(),
       new TextureRenderSystem(),
       new TextRenderSystem(),
       new ShadowRenderSystem(),

@@ -1,9 +1,9 @@
 import {
-  BackgroundComponent, WorldCoordinateComponent,
+  WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '../src/camera';
 import {
-  Rectangle, MinionMap, HeroMap, Hero,
+  Rectangle, MinionMap, HeroMap, Hero, Background,
 } from './objects';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
@@ -14,7 +14,7 @@ import { GameObject } from '../src';
 import { TransformComponent } from '../src/utils';
 import {
   ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
-  RenderComponent, Material, Light, LightType,
+  RenderComponent, Material, Light, LightType, BackgroundRenderComponent,
 } from '../src/render-engine';
 
 class GlobalLightControlSystem {
@@ -50,12 +50,11 @@ class ToogleMaterialComponent {
 }
 
 class ToogleMaterialSystem {
-  run(game, { scenes, currentScene, inputState }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { inputState }) {
     const { keyboard } = inputState;
-    cameras.forEach((camera) => {
-      const background = camera.components.find((c) => c instanceof BackgroundComponent);
-      const toggleMaterial = camera.components.find((c) => c instanceof ToogleMaterialComponent);
+    entities.forEach((e) => {
+      const background = e.components.find((c) => c instanceof BackgroundRenderComponent);
+      const toggleMaterial = e.components.find((c) => c instanceof ToogleMaterialComponent);
       if (!background || !toggleMaterial) return;
       if (keyboard.clickedKeys[toggleMaterial.key]) {
         background.material = background.material ? null : toggleMaterial.material;
@@ -162,18 +161,6 @@ export default (game) => {
     shininess: 100,
     specular: [1, 0, 0, 1],
   });
-  camera.components.push(new ToogleMaterialComponent({ key: KeyboardKeys.Space, material }));
-  camera.components.push(new BackgroundComponent({
-    // type: BackgroundTypes.Fixed,
-    color: [0.8, 0.8, 0.8, 0],
-    size: [100, 100],
-    position: [50, 35],
-    // position: [0, 0],
-    texture: './assets/images/bg.png',
-    normalMap: './assets/images/bg_normal.png',
-    material,
-    shadowReceiver: new ShadowReceiverComponent(),
-  }));
   scene.addCamera(camera);
 
   scene.setResources([
@@ -183,6 +170,24 @@ export default (game) => {
     './assets/images/minion_sprite_normal.png',
     './assets/fonts/system-default-font.fnt',
   ]);
+
+  const bg = new Background({
+    render: {
+    // type: BackgroundTypes.Fixed,
+      color: [0.8, 0.8, 0.8, 0],
+      texture: './assets/images/bg.png',
+      normalMap: './assets/images/bg_normal.png',
+      material,
+    },
+    transform: {
+      size: [100, 100],
+      position: [50, 35],
+    // position: [0, 0],
+    },
+    shadowReceiver: true,
+  });
+  bg.components.push(new ToogleMaterialComponent({ key: KeyboardKeys.Space, material }));
+  scene.addEntity(bg);
 
   // the light
   const light1 = new Light({

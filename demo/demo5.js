@@ -9,7 +9,7 @@ import {
 import { KeyboardKeys } from '../src/input-system';
 import { Minion, Hero, Brain } from './objects';
 import {
-  CameraEntity, WorldCoordinateComponent, ViewportComponent, BackgroundComponent,
+  CameraEntity, WorldCoordinateComponent, ViewportComponent,
 } from '../src/camera';
 import { RenderComponent, TextComponent } from '../src/render-engine';
 
@@ -171,7 +171,6 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 600, 400],
   }));
-  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   scene.setResources([

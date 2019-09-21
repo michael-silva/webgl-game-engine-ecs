@@ -12,11 +12,11 @@ import {
   BoundingUtils, RenderUtils, TransformUtils, CameraUtils, TransformComponent,
 } from '../src/utils';
 import {
-  Minion, Hero, Brain, Portal,
+  Minion, Hero, Brain, Portal, Background,
 } from './objects';
 import { KeyboardKeys, MouseButton } from '../src/input-system';
 import {
-  BackgroundComponent, ViewportComponent, WorldCoordinateComponent, CameraEntity,
+  ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '../src/camera';
 import { GameObject } from '../src';
 import { RenderComponent, TextComponent } from '../src/render-engine';
@@ -316,14 +316,6 @@ class MouseMoveEntitySystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const cameraBackground = new BackgroundComponent({
-    // type: BackgroundTypes.Fixed,
-    color: [0.8, 0.8, 0.8, 0],
-    size: [150, 150],
-    position: [50, 35],
-    // position: [0, 0],
-    texture: './assets/images/bg.png',
-  });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 37.5],
@@ -349,7 +341,6 @@ export default (game) => {
     zoomTowardOutKey: KeyboardKeys.K,
     shakeKey: KeyboardKeys.Space,
   }));
-  camera.components.push(cameraBackground);
   scene.addCamera(camera);
   const camHero = new CameraEntity();
   camHero.components.push(new WorldCoordinateComponent({
@@ -360,7 +351,6 @@ export default (game) => {
     array: [490, 330, 150, 150],
     bound: 2,
   }));
-  camHero.components.push(cameraBackground);
   scene.addCamera(camHero);
   const camBrain = new CameraEntity();
   camBrain.components.push(new WorldCoordinateComponent({
@@ -371,7 +361,6 @@ export default (game) => {
     array: [0, 330, 150, 150],
     bound: 2,
   }));
-  camBrain.components.push(cameraBackground);
   scene.addCamera(camBrain);
 
   scene.setResources([
@@ -379,6 +368,20 @@ export default (game) => {
     './assets/images/minion_sprite.png',
     './assets/fonts/system-default-font.fnt',
   ]);
+
+  const background = new Background({
+    render: {
+    // type: BackgroundTypes.Fixed,
+      color: [0.8, 0.8, 0.8, 0],
+      texture: './assets/images/bg.png',
+    },
+    transform: {
+      size: [150, 150],
+      position: [50, 35],
+    // position: [0, 0],
+    },
+  });
+  scene.addEntity(background);
 
   const minionLeft = new Minion(30, 30);
   scene.addEntity(minionLeft);

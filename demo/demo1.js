@@ -5,7 +5,7 @@ import {
 } from './shared';
 
 import {
-  WorldCoordinateComponent, CameraEntity, ViewportComponent, BackgroundComponent,
+  WorldCoordinateComponent, CameraEntity, ViewportComponent,
 } from '../src/camera';
 import { AudioSystem } from '../src/audio-system';
 import { KeyboardKeys } from '../src/input-system';
@@ -110,7 +110,6 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [20, 40, 600, 300],
   }));
-  camera.components.push(new BackgroundComponent());
   scene.addCamera(camera);
 
   const blueTransform = new TransformComponent({

@@ -3,6 +3,7 @@ import { MovementComponent, MovementKeysComponent } from './shared';
 import { KeyboardKeys } from '../src/input-system';
 import {
   SpriteAnimation, RenderComponent, Material, AnimationType,
+  BackgroundRenderComponent, ShadowReceiverComponent,
 } from '../src/render-engine';
 import { TransformComponent } from '../src/utils';
 import { RigidCircleComponent, RigidRectangleComponent } from '../src/physics-system';
@@ -203,5 +204,16 @@ export class Brain extends GameObject {
       size: [3, 5.4],
     }));
     this.components.push(new MovementComponent({ speed, direction: [0, 1] }));
+  }
+}
+
+export class Background extends GameObject {
+  constructor({ transform, render, shadowReceiver }) {
+    super();
+    this.components.push(new BackgroundRenderComponent(render));
+    this.components.push(new TransformComponent(transform));
+    if (shadowReceiver) {
+      this.components.push(new ShadowReceiverComponent());
+    }
   }
 }

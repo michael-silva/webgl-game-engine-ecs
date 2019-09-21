@@ -7,22 +7,6 @@ export const CameraViewport = Object.freeze({
   Height: 3,
 });
 
-export class BackgroundComponent {
-  constructor({
-    texture, position, size, color,
-    normalMap, material, shadowReceiver, z,
-  } = {}) {
-    this.texture = texture;
-    this.normalMap = normalMap;
-    this.position = position;
-    this.material = material;
-    this.size = size;
-    this.z = z;
-    this.color = color || [0.8, 0.8, 0.8, 1];
-    this.shadowReceiver = shadowReceiver;
-  }
-}
-
 export class WorldCoordinateComponent {
   constructor({ center, width, z = 10 }) {
     this.center = center;
