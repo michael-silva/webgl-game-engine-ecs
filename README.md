@@ -6,8 +6,19 @@ _Reference examples here [https://gamethemedgroup.github.io/GTCS-GameEngine/inde
 
 ## Improvements and Refactorings
 
+* Do the final project game
 * Add capability to turn on and off systems
-* Move default glsl shaders to game-engine core
-* Split files refactong and aplying full concepts of ECS
-* Create the unit tests
-* Create a abstract class width default functionalites required to any shader
+* Add way to extend the existing engines adding new systems
+* Add way to add new engines
+* Do the samples with advanced particles
+* Do the samples with advanced physics
+* Do the samples with IDE editor
+* Create a pong demo
+* Create a tesk board on github
+* Write documentation with demos and tutorials
+
+## Tech debits
+
+* Think about use of typescript
+* Add lerna to project spliting the source packages and demos
+* Library of materials/lights/particles/etc...
