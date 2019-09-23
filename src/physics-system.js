@@ -136,6 +136,42 @@ export class CollisionUtils {
     });
   }
 
+  static collidedTransforms(transform1, transform2) {
+    const vFrom1to2 = vec2.fromValues(0, 0);
+    vec2.sub(vFrom1to2, transform2.position, transform1.position);
+    const xDepth = (transform1.size[0] / 2) + (transform2.size[0] / 2)
+      - Math.abs(vFrom1to2[0]);
+    if (xDepth > 0) {
+      const yDepth = (transform1.size[1] / 2) + (transform2.size[1] / 2)
+        - Math.abs(vFrom1to2[1]);
+      const collisionInfo = new CollisionInfo();
+      if (yDepth > 0) {
+        // axis of least penetration
+        if (xDepth < yDepth) {
+          if (vFrom1to2[0] < 0) {
+            collisionInfo.normal = [-1, 0];
+          }
+          else {
+            collisionInfo.normal = [1, 0];
+          }
+          collisionInfo.depth = xDepth;
+        }
+        else {
+          if (vFrom1to2[1] < 0) {
+            collisionInfo.normal = [0, -1];
+          }
+          else {
+            collisionInfo.normal = [0, 1];
+          }
+
+          collisionInfo.depth = yDepth;
+        }
+        return collisionInfo;
+      }
+    }
+    return null;
+  }
+
   static collidedTwoRectangles(rectShape1, rectTransform1, rectShape2, rectTransform2) {
     const vFrom1to2 = vec2.fromValues(0, 0);
     vec2.sub(vFrom1to2, rectTransform2.position, rectTransform1.position);
