@@ -4,6 +4,19 @@ A study of creating a javascript 2D game engine based on canvas WebGL
 
 _Reference examples here [https://gamethemedgroup.github.io/GTCS-GameEngine/index.html]_
 
+## Features
+
+* Audio Engine
+* Input Engine
+* Render Engine / Cameras support / Text support / Textures support / Illumintation support / Shadders support
+* Particles Engine
+* Effects Engine (Fade/Pulse/etc. animations)
+* Transition effects
+* Resource management
+* Scenes management
+* Physiscs engine
+* Utils
+
 ## Improvements and Refactorings
 
 * Do the final project game
@@ -14,8 +27,9 @@ _Reference examples here [https://gamethemedgroup.github.io/GTCS-GameEngine/inde
 * Do the samples with advanced physics
 * Do the samples with IDE editor
 * Create a pong demo
-* Create a tesk board on github
+* Create a task board on github
 * Write documentation with demos and tutorials
+* Do the unit tests
 
 ## Tech debits
 
