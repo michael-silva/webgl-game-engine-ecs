@@ -31,8 +31,9 @@ export class GameLoopSystem {
         game.preSystems.forEach((s) => s.run(game));
         loopState.lagTime -= MPF;
         const scene = game.scenes[game.currentScene];
-        scene.worlds.forEach((world) => {
-          if (!world.active) return;
+        if (!scene) return;
+        const worlds = scene.worlds.filter((w) => w.active && !w.paused);
+        worlds.forEach((world) => {
           scene.systems.forEach((s) => s.run(world, game));
         });
         game.posSystems.forEach((s) => s.run(game));
@@ -49,12 +50,12 @@ export class LoaderSystem {
   _currentScene = -1;
 
   constructor({ loadingScene } = {}) {
-    this.loadingScene = loadingScene || 0;
+    this.loadingScene = loadingScene;
   }
 
   run(game) {
     const { scenes, currentScene } = game;
-    const scene = scenes[currentScene];
+    const scene = scenes[currentScene] || scenes[this._currentScene];
     if (this._lastScene !== currentScene && this._currentScene === -1) {
       this._currentScene = currentScene;
       // eslint-disable-next-line no-param-reassign

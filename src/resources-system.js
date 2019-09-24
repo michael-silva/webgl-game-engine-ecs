@@ -33,14 +33,13 @@ export class WorldResourceCache {
 }
 
 class ResourceEntry {
-  ref = 0;
-
   asset = null;
 
   loaded = false;
 
-  constructor({ key }) {
+  constructor({ key, ref }) {
     this.key = key;
+    this.ref = ref || 0;
   }
 }
 
@@ -78,8 +77,9 @@ export class ResourceLoader {
   static loadWorldsResources(game, scene) {
     const worlds = scene.worlds.filter((w) => w.active && w.resources);
     worlds.forEach((world) => {
-      world.resources.forEach((key) => ResourceLoader.updateResource(game, key));
       const cache = world.components.find((c) => c instanceof WorldResourceCache);
+      if (cache && cache.active) return;
+      world.resources.forEach((key) => ResourceLoader.updateResource(game, key));
       if (!cache) world.components.push(new WorldResourceCache({ active: true }));
       else cache.active = true;
     });
@@ -88,8 +88,7 @@ export class ResourceLoader {
   static hasUnloadedResources(game, scene) {
     const { resourceMap } = game;
     const resources = ResourceLoader.getActiveResources(scene);
-    return resources.length > 0
-      && resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded);
+    return resources.some((key) => !resourceMap[key] || !resourceMap[key].loaded);
   }
 
   static unloadWorldsResources(game, scene) {
@@ -102,10 +101,7 @@ export class ResourceLoader {
       }
       return false;
     });
-    const resources = [
-      ...scene.resources,
-      ...worlds.flatMap((world) => world.resources || []),
-    ];
+    const resources = worlds.flatMap((world) => world.resources || []);
 
     resources.forEach((key) => {
       if (!resourceMap[key]) return;
