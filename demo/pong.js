@@ -19,7 +19,7 @@ class MovementComponent {
   constructor({ speed, direction }) {
     this.speed = speed;
     this.defaultSystem = this.speed;
-    this.direction = direction || [0, 1];
+    this.direction = direction || [0, 0];
   }
 }
 
@@ -279,11 +279,13 @@ class MainMenuSystem {
       const player2 = this.getPlayer2(menu, game);
       if (menu.selectedIndex === 0) {
         const keysIndex = player2.components.findIndex((c) => c instanceof MovementKeysComponent);
+        // eslint-disable-next-line prefer-destructuring
         menu.cacheKeys = player2.components.splice(keysIndex, 1)[0];
         if (menu.cacheAI) player2.components.push(menu.cacheAI);
       }
       else if (menu.selectedIndex === 1) {
         const aiIndex = player2.components.findIndex((c) => c instanceof AIMovementComponent);
+        // eslint-disable-next-line prefer-destructuring
         menu.cacheAI = player2.components.splice(aiIndex, 1)[0];
         if (menu.cacheKeys) player2.components.push(menu.cacheKeys);
       }
@@ -307,8 +309,8 @@ class PauseMenuSystem {
   run({ entities }, game) {
     const { keyboard } = game.inputState;
     const { worlds } = game.scenes[game.currentScene];
-    if (!worlds[1].active && keyboard.clickedKeys[KeyboardKeys.Space]) {
-      worlds[0].pause = true;
+    if (!worlds[1].active && keyboard.clickedKeys[KeyboardKeys.Enter]) {
+      worlds[0].paused = true;
       worlds[1].active = true;
     }
     else {
@@ -318,12 +320,13 @@ class PauseMenuSystem {
         const options = entities.filter((e2) => menu.options.includes(e2.id));
         if (options.length === 0) return;
         if (menu.selectedIndex === 0) {
-          worlds[0].pause = false;
+          worlds[0].paused = false;
           worlds[1].active = false;
         }
         else if (menu.selectedIndex === 1) {
-          worlds[0].pause = false;
+          worlds[0].paused = false;
           worlds[1].active = false;
+          // eslint-disable-next-line no-param-reassign
           game.currentScene = 0;
         }
       });
@@ -391,14 +394,16 @@ const createMenuScene = (game, camera) => {
 const createPlayScene = (game, camera) => {
   const playScene = game.createScene();
   playScene.addCamera(camera);
-  const world = playScene.getWorld();
+  playScene.setResources([
+    './assets/fonts/system-default-font.fnt',
+  ]);
 
+  const world = playScene.getWorld();
   world.setResources([
     './assets/sounds/playerScore.mp3',
     './assets/sounds/enemyScore.mp3',
     './assets/sounds/wall.mp3',
     './assets/sounds/hit.mp3',
-    './assets/fonts/system-default-font.fnt',
     './assets/images/bg.png',
   ]);
 
@@ -580,8 +585,8 @@ const createPlayScene = (game, camera) => {
   playScene.use(new RespawnSystem());
   playScene.use(new ScoreSystem());
   playScene.use(new AudioSystem());
-  playScene.use(new KeyboardTextMenuSystem());
   playScene.use(new PauseMenuSystem());
+  playScene.use(new KeyboardTextMenuSystem());
 };
 
 export default (game) => {
