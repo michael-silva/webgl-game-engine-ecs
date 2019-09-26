@@ -3,6 +3,15 @@ import {
 } from '@wge/core/camera';
 import { MenuScene, PlayScene } from './scenes';
 
+/*
+Add win scene
+Add lose scene
+Add end menu
+Add background to menu
+Add fade effect to menus
+Change the font color
+Basic refac to fix no-new
+*/
 
 export default (game) => {
   const camera = new CameraEntity();
