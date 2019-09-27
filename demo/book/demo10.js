@@ -4,7 +4,7 @@ import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
-import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-engine';
 import { GameObject } from '@wge/core';
 import {
   CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,

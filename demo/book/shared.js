@@ -57,8 +57,8 @@ export class KeyboardMovementSystem {
 }
 
 export class MovementChangeLevelSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras, worlds } = scenes[currentScene];
+  run({ entities, scene }) {
+    const { cameras, worlds } = scene;
     const [camera] = cameras;
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;

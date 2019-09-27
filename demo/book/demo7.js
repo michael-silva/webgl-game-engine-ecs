@@ -4,7 +4,7 @@ import { vec2 } from 'gl-matrix';
 import {
   BoundingUtils, RenderUtils, TransformUtils, CameraUtils, TransformComponent,
 } from '@wge/core/utils';
-import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-engine';
 import {
   ViewportComponent, WorldCoordinateComponent, CameraEntity,
 } from '@wge/core/camera';

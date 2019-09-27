@@ -1,12 +1,10 @@
-/* eslint-disable max-classes-per-file */
-
 import { mat4, vec2 } from 'gl-matrix';
 import {
   GameLoopSystem, LoaderSystem,
   GarbageCollectorSystem,
 } from './systems';
 import { RenderEngine } from './render-engine';
-import { InputEngine } from './input-system';
+import { InputEngine } from './input-engine';
 
 // @component
 export class GameWorldEntity {
@@ -14,16 +12,11 @@ export class GameWorldEntity {
 
   resources = [];
 
+  sound = null;
+
   entities = [];
 
-  systems = [];
-
   components = [];
-
-  constructor({ active, paused } = {}) {
-    this.active = !!active;
-    this.paused = !!paused;
-  }
 }
 
 // @component
@@ -45,19 +38,22 @@ export class GlobalLight {
 
 // @entity
 export class GameSceneEntity {
-  sound = null;
-
   globalLight = new GlobalLight();
 
   resources = [];
-
-  cameras = [];
 
   lights = [];
 
   worlds = [];
 
+  currentWorld = 0;
+
   systems = [];
+
+  constructor({ active, paused } = {}) {
+    this.active = !!active;
+    this.paused = !!paused;
+  }
 }
 
 
@@ -79,7 +75,7 @@ export class GameEntity {
 
   scenes = [];
 
-  currentScene = 0;
+  cameras = [];
 }
 
 // @entity
@@ -136,8 +132,16 @@ class GameWorld {
     this._world.entities.push(entity);
   }
 
+  addComponent(component) {
+    this._world.components.push(component);
+  }
+
   setResources(resources) {
     this._world.resources = resources || [];
+  }
+
+  setSound(sound) {
+    this._scene.sound = sound;
   }
 }
 
@@ -156,8 +160,8 @@ class GameScene {
     this._scene.resources = resources || [];
   }
 
-  setSound(sound) {
-    this._scene.sound = sound;
+  setGlobalLight(light) {
+    Object.assign(this._scene.globalLight, light);
   }
 
   addLight(light) {
@@ -167,26 +171,9 @@ class GameScene {
     this._scene.lights.push(light);
   }
 
-  setGlobalLight(light) {
-    Object.assign(this._scene.globalLight, light);
-  }
-
-  addCamera(camera) {
-    this._scene.cameras.push(camera);
-  }
-
-  addEntity(entity, world) {
-    const theWorld = world || this._scene.worlds[0];
-    GameWorld.setEntityId(entity);
-    theWorld.entities.push(entity);
-  }
-
-  getWorld() {
-    return new GameWorld(this._scene.worlds[0]);
-  }
-
   createWorld() {
-    const world = new GameWorldEntity({ active: this._scene.worlds.length === 0 });
+    const world = new GameWorldEntity();
+    world.scene = this._scene;
     this._scene.worlds.push(world);
     return new GameWorld(world);
   }
@@ -194,23 +181,30 @@ class GameScene {
 
 // @orchestrator
 export class GameEngine {
-  constructor(canvas, config) {
+  constructor(canvas, {
+    inputEngine = new InputEngine(canvas),
+    renderEngine = new RenderEngine(canvas),
+    loaderSystem = new LoaderSystem(),
+  } = {}) {
     this._game = new GameEntity();
-    // TODO: Refactor to create a generic system of engines
-    this._game.renderEngine = new RenderEngine(canvas, config.bgColor);
-    this._game.renderState = this._game.renderEngine.state;
-    this._game.inputEngine = new InputEngine(canvas);
-    this._game.inputState = this._game.inputEngine.state;
     this._loop = new GameLoopSystem();
-    this.useBefore(new LoaderSystem());
+    if (!this._game.inputState) this._game.inputState = inputEngine.state;
+    if (!this._game.renderState) this._game.renderState = renderEngine.state;
+    this.useBefore(loaderSystem);
+    this.useBefore(inputEngine);
+    this.useAfter(renderEngine);
     this.useAfter(new GarbageCollectorSystem());
   }
 
-  createScene() {
-    const sceneEntity = new GameSceneEntity();
+  addCamera(camera) {
+    this._game.cameras.push(camera);
+  }
+
+  createScene(sceneParams) {
+    const active = this._game.scenes.length === 0;
+    const sceneEntity = new GameSceneEntity({ active, ...sceneParams });
     this._game.scenes.push(sceneEntity);
     const scene = new GameScene(sceneEntity);
-    scene.createWorld();
     return scene;
   }
 
@@ -229,8 +223,7 @@ export class GameEngine {
     this._game.loaders.push(map);
   }
 
-  run({ scene = 0 } = {}) {
-    this._game.currentScene = scene;
+  run() {
     this._loop.run(this._game);
   }
 }

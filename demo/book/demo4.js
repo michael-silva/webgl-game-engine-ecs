@@ -5,7 +5,7 @@ import { GameObject } from '@wge/core';
 import {
   Color, RenderUtils, TransformComponent,
 } from '@wge/core/utils';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import {
   CameraEntity, WorldCoordinateComponent, ViewportComponent,
 } from '@wge/core/camera';

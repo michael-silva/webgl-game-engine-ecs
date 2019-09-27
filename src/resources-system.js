@@ -45,8 +45,8 @@ class ResourceEntry {
 
 export class ResourceLoader {
   static getActiveResources(scene) {
-    const words = scene.worlds.filter((w) => w.active && w.resources);
-    return [...scene.resources, ...words.flatMap((w) => w.resources)];
+    const world = scene.worlds[scene.currentWorld];
+    return [...scene.resources, ...world.resources];
   }
 
   static updateResource(game, key) {
@@ -75,14 +75,12 @@ export class ResourceLoader {
   }
 
   static loadWorldsResources(game, scene) {
-    const worlds = scene.worlds.filter((w) => w.active && w.resources);
-    worlds.forEach((world) => {
-      const cache = world.components.find((c) => c instanceof WorldResourceCache);
-      if (cache && cache.active) return;
-      world.resources.forEach((key) => ResourceLoader.updateResource(game, key));
-      if (!cache) world.components.push(new WorldResourceCache({ active: true }));
-      else cache.active = true;
-    });
+    const world = scene.worlds[scene.currentWorld];
+    const cache = world.components.find((c) => c instanceof WorldResourceCache);
+    if (cache && cache.active) return;
+    world.resources.forEach((key) => ResourceLoader.updateResource(game, key));
+    if (!cache) world.components.push(new WorldResourceCache({ active: true }));
+    else cache.active = true;
   }
 
   static hasUnloadedResources(game, scene) {
@@ -93,38 +91,37 @@ export class ResourceLoader {
 
   static unloadWorldsResources(game, scene) {
     const { resourceMap } = game;
-    const worlds = scene.worlds.filter((world) => {
-      const cache = world.components.find((c) => c instanceof WorldResourceCache);
-      if (cache && cache.active && !world.active) {
-        cache.active = false;
-        return true;
-      }
-      return false;
-    });
-    const resources = worlds.flatMap((world) => world.resources || []);
+    const world = scene.worlds[scene.currentWorld];
+    const cache = world.components.find((c) => c instanceof WorldResourceCache);
+    if (cache && cache.active) {
+      cache.active = false;
+    }
 
+    const resources = (world.resources || []);
     resources.forEach((key) => {
       if (!resourceMap[key]) return;
       resourceMap[key].ref--;
-      if (resourceMap[key].ref === 0) {
-        delete resourceMap[key];
-      }
     });
   }
 
   static unloadResources(game, scene) {
     const { resourceMap } = game;
+    const world = scene.worlds[scene.currentWorld];
     const resources = [
       ...scene.resources,
-      ...scene.worlds.flatMap((world) => world.resources || []),
+      ...world.resources || [],
     ];
-    scene.worlds.forEach((world) => {
-      const cache = world.components.find((c) => c instanceof WorldResourceCache);
-      if (cache) cache.active = false;
-    });
+    const cache = world.components.find((c) => c instanceof WorldResourceCache);
+    if (cache) cache.active = false;
     resources.forEach((key) => {
       if (!resourceMap[key]) return;
       resourceMap[key].ref--;
+    });
+  }
+
+  static deleteUnusedResources(game) {
+    const { resourceMap } = game;
+    Object.keys(resourceMap).forEach((key) => {
       if (resourceMap[key].ref === 0) {
         delete resourceMap[key];
       }

@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 
 import { GameEngine } from '@wge/core';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import { SoundSystem } from '@wge/core/audio-system';
 import { ImageLoader, AudioLoader } from '@wge/core/resources-system';
 import { FontLoader } from '@wge/core/systems';
@@ -79,8 +79,12 @@ export class KeyboardChangeDemoSystem {
   }
 
   changeScene(game, number) {
+    game.scenes.forEach((scene) => {
+      // eslint-disable-next-line no-param-reassign
+      scene.active = false;
+    });
     // eslint-disable-next-line no-param-reassign
-    game.currentScene = number;
+    game.scenes[number].active = true;
     this.canvas.width = number > 7 ? 1280 : 640;
     this.canvas.height = number > 7 ? 720 : 480;
   }
@@ -89,7 +93,7 @@ export class KeyboardChangeDemoSystem {
 function main() {
   const canvas = document.querySelector('#canvas');
 
-  const game = new GameEngine(canvas, { bgColor: [0.9, 0.9, 0.9, 1] });
+  const game = new GameEngine(canvas);
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
   game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });
@@ -109,10 +113,7 @@ function main() {
       initDemo10(game);
       initDemo11(game);
 
-      game.useAfter(new SoundSystem());
-      game.run({ scene: 10 });
-      canvas.width = 1280;
-      canvas.height = 720;
+      game.run();
     });
 }
 

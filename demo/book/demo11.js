@@ -3,7 +3,7 @@ import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import { GameObject } from '@wge/core';
 import { TransformComponent } from '@wge/core/utils';
 import {

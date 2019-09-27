@@ -1,7 +1,7 @@
 import {
   WorldCoordinateComponent, CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
-import { createPlayScene, createTitleScene } from './scenes';
+import { createPlayScene, createMenuScene } from './scenes';
 
 export default (game) => {
   const camera = new CameraEntity();
@@ -13,6 +13,7 @@ export default (game) => {
     array: [0, 0, 1280, 720],
   }));
 
-  createTitleScene(game, camera);
-  createPlayScene(game, camera);
+  game.addCamera(camera);
+  createPlayScene(game);
+  createMenuScene(game);
 };

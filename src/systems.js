@@ -27,17 +27,14 @@ export class GameLoopSystem {
         loopState.isLoopRunning = false;
       }
       while (loopState.lagTime >= MPF && loopState.isLoopRunning) {
-        game.inputEngine.run(game);
         game.preSystems.forEach((s) => s.run(game));
         loopState.lagTime -= MPF;
-        const scene = game.scenes[game.currentScene];
-        if (!scene) return;
-        const worlds = scene.worlds.filter((w) => w.active && !w.paused);
-        worlds.forEach((world) => {
+        const scenes = game.scenes.filter((s) => s.active && !s.paused);
+        scenes.forEach((scene) => {
+          const world = scene.worlds[scene.currentWorld];
           scene.systems.forEach((s) => s.run(world, game));
         });
         game.posSystems.forEach((s) => s.run(game));
-        game.renderEngine.run(game);
       }
     }
   }
@@ -45,44 +42,42 @@ export class GameLoopSystem {
 
 // @system
 export class LoaderSystem {
-  _lastScene = -1;
-
-  _currentScene = -1;
-
   constructor({ loadingScene } = {}) {
     this.loadingScene = loadingScene;
   }
 
   run(game) {
-    const { scenes, currentScene } = game;
-    const scene = scenes[currentScene] || scenes[this._currentScene];
-    if (this._lastScene !== currentScene && this._currentScene === -1) {
-      this._currentScene = currentScene;
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = this.loadingScene;
-      ResourceLoader.loadSceneResources(game, scene);
-      if (this._lastScene >= 0) ResourceLoader.unloadResources(game, scenes[this._lastScene]);
-    }
-    else if (ResourceLoader.hasUnloadedResources(game, scene)) {
-      ResourceLoader.loadWorldsResources(game, scene);
-      ResourceLoader.unloadWorldsResources(game, scene);
-    }
-    else if (this._currentScene >= 0) {
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = this._currentScene;
-      this._lastScene = this._currentScene;
-      this._currentScene = -1;
-    }
+    game.scenes.forEach((scene) => {
+      if (!scene.active && !(scene.loaded || scene.loading)) return;
+      /* eslint-disable no-param-reassign */
+      if (!scene.active && scene.loaded) {
+        scene.loaded = false;
+        ResourceLoader.unloadResources(game, scene);
+      }
+      else if (!scene.loaded && !scene.loading) {
+        scene.loading = true;
+        scene.active = false;
+        ResourceLoader.loadSceneResources(game, scene);
+        ResourceLoader.loadWorldsResources(game, scene);
+      }
+      else if (!scene.loaded && !ResourceLoader.hasUnloadedResources(game, scene)) {
+        scene.loading = false;
+        scene.loaded = true;
+        scene.active = true;
+      }
+      /* eslint-enable no-param-reassign */
+    });
+    ResourceLoader.deleteUnusedResources(game);
   }
 }
 
 // @system
 export class GarbageCollectorSystem {
   run(game) {
-    const { scenes, currentScene } = game;
-    const scene = scenes[currentScene];
-    scene.worlds.forEach((world) => {
-      if (!world.active) return;
+    const { scenes } = game;
+    scenes.forEach((scene) => {
+      if (!scene.active) return;
+      const world = scene.worlds[scene.currentWorld];
       // eslint-disable-next-line
       world.entities = world.entities.filter((e) => !e._destroyed);
     });

@@ -6,7 +6,7 @@ import initPong from './pong';
 function main() {
   const canvas = document.querySelector('#canvas');
 
-  const game = new GameEngine(canvas, { bgColor: [0.3, 0.3, 0.3, 1] });
+  const game = new GameEngine(canvas);
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
   game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });

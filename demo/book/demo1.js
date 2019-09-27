@@ -4,7 +4,7 @@ import {
   WorldCoordinateComponent, CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
 import { AudioSystem } from '@wge/core/audio-system';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import {
   MovementComponent, MovementKeysComponent,
   KeyboardMovementSystem, MovementSystem,
@@ -62,8 +62,8 @@ class KeyboardRotationSystem {
 }
 
 class MovementPortalSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const [camera] = scenes[currentScene].cameras;
+  run({ entities }, { cameras }) {
+    const [camera] = cameras;
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
     const MIN_X = worldCoordinate.center[0] - worldCoordinate.width / 2;
