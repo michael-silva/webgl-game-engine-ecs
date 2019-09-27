@@ -23,7 +23,7 @@ _Reference examples here <https://gamethemedgroup.github.io/GTCS-GameEngine/inde
 
 ## Task to complete version 1
 
--[] Create a pong demo
+-[x] Create a pong demo
 -[] refactor the spaces
   - Game has a list of active scenes
   - Scenes has just one current world
@@ -31,11 +31,11 @@ _Reference examples here <https://gamethemedgroup.github.io/GTCS-GameEngine/inde
   - Worlds has components with values to be used in systems
   - States are a collection of active scenes and current worlds, and active systems / cameras
   - Change the states to update in next loop the scene or world
--[] Create the final project game
 -[] Add capability to turn on and off systems
 -[] Add way to extend the existing engines adding new systems
 -[] Add way to add new engines
 -[] Add way to reset the scenes and worlds easily
+-[] Create the final project game
 -[] Do the samples with advanced particles
 -[] Do the samples with advanced physics
 -[] Do the samples with IDE editor
