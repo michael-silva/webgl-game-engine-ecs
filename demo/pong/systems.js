@@ -1,5 +1,6 @@
+/* eslint-disable max-classes-per-file */
 import { TransformComponent, CameraUtils, BoundingUtils } from '@wge/core/utils';
-import { TextComponent } from '@wge/core/render-engine';
+import { TextComponent, RenderComponent } from '@wge/core/render-engine';
 import { WorldCoordinateComponent, ViewportComponent } from '@wge/core/camera';
 import { KeyboardKeys } from '@wge/core/input-system';
 import { CollisionUtils } from '@wge/core/physics-system';
@@ -11,7 +12,11 @@ import {
   BoundaryComponent,
   ScoreComponent,
   SolidComponent,
+  MenuOptionComponent,
+  MenuConfigComponent,
+  FadeComponent,
 } from './components';
+
 
 export class MovementSystem {
   run({ entities }) {
@@ -62,7 +67,10 @@ export class IAMovementSystem {
 }
 
 export class ScoreSystem {
-  run({ entities }) {
+  maxPoints = 1;
+
+  run({ entities }, { scenes, currentScene }) {
+    const { worlds } = scenes[currentScene];
     const collideds = [];
     entities.forEach((e) => {
       const boundary = e.components.find((c) => c instanceof BoundaryComponent);
@@ -86,6 +94,16 @@ export class ScoreSystem {
           }
           if (text) {
             text.content = score.points.toString();
+          }
+          if (score.points > this.maxPoints) {
+            worlds[0].paused = true;
+            worlds[2].active = true;
+            worlds[2].entities.forEach((e2) => {
+              const render = e2.components.find((c) => c instanceof RenderComponent);
+              const fade = e2.components.find((c) => c instanceof FadeComponent);
+              if (!fade || !render) return;
+              render.color[3] = fade.min;
+            });
           }
         }
       });
@@ -116,6 +134,17 @@ export class RespawnSystem {
         movement.direction = [rx, ry];
         movement.speed = movement.defaultSystem;
       }
+    });
+  }
+}
+
+export class FadeEffectSystem {
+  run({ entities }) {
+    entities.forEach((e) => {
+      const render = e.components.find((c) => c instanceof RenderComponent);
+      const fade = e.components.find((c) => c instanceof FadeComponent);
+      if (!fade || !render) return;
+      if (render.color[3] < fade.max) render.color[3] += fade.delta;
     });
   }
 }
@@ -167,80 +196,53 @@ export class SolidCollisionSystem {
   }
 }
 
-export class KeyboardTextMenuComponent {
-  constructor({
-    keys, defaultColor, selectedColor,
-    options, onSelect,
-  }) {
-    this.keys = keys;
-    this.options = options;
-    this.selectedColor = selectedColor;
-    this.defaultColor = defaultColor;
-    this.onSelect = onSelect;
-    this.selectedIndex = 0;
-    this.inLoop = true;
-  }
+export const MenuTypes = Object.freeze({
+  TITLE: 'title',
+  PAUSE: 'pause',
+  FINISH: 'finish',
+});
+
+function resetWorld(world) {
+  const { entities } = world;
+  entities.forEach((e) => {
+    const score = e.components.find((c) => c instanceof ScoreComponent);
+    const boundary = e.components.find((c) => c instanceof BoundaryComponent);
+    const transform = e.components.find((c) => c instanceof TransformComponent);
+    if (!(score || boundary) || !transform) return;
+    if (score) {
+      const text = e.components.find((c) => c instanceof TextComponent);
+      score.points = 0;
+      text.content = score.points.toString();
+    }
+    transform.position[1] = 37.5;
+  });
 }
 
-export class KeyboardTextMenuSystem {
-  run({ entities }, game) {
-    const { keyboard } = game.inputState;
-    entities.forEach((e) => {
-      const menu = e.components.find((c) => c instanceof KeyboardTextMenuComponent);
-      if (!menu) return;
-      const options = entities.filter((e2) => menu.options.includes(e2.id));
-      if (options.length === 0) return;
-      const { selectedIndex } = menu;
-      menu.selected = false;
-      if (keyboard.clickedKeys[menu.keys.next]) {
-        menu.selectedIndex++;
-        if (menu.selectedIndex === options.length) {
-          menu.selectedIndex = menu.inLoop ? 0 : options.length - 1;
-        }
-      }
-      else if (keyboard.clickedKeys[menu.keys.prev]) {
-        menu.selectedIndex--;
-        if (menu.selectedIndex < 0) {
-          menu.selectedIndex = menu.inLoop ? options.length - 1 : 0;
-        }
-      }
-      else if (keyboard.clickedKeys[menu.keys.enter]) {
-        menu.selected = true;
-      }
-      const selectedText = options[menu.selectedIndex]
-        .components.find((c) => c instanceof TextComponent);
-      selectedText.color = menu.selectedColor;
-      if (selectedIndex !== menu.selectedIndex) {
-        const oldText = options[selectedIndex].components.find((c) => c instanceof TextComponent);
-        oldText.color = menu.defaultColor;
-      }
-    });
-  }
-}
-
-export class MainMenuSystem {
-  run({ entities }, game) {
-    entities.forEach((e) => {
-      const menu = e.components.find((c) => c instanceof KeyboardTextMenuComponent);
-      if (!menu || !menu.selected) return;
-      const options = entities.filter((e2) => menu.options.includes(e2.id));
-      if (options.length === 0) return;
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = menu.selectedIndex === 2 ? 0 : 1;
-      const player2 = this.getPlayer2(menu, game);
-      if (menu.selectedIndex === 0) {
+export class TitleMenuSystem {
+  run({ config }, game) {
+    if (config.tag !== MenuTypes.TITLE || !config.selected) return;
+    // eslint-disable-next-line no-param-reassign
+    game.currentScene = config.selectedIndex === 2 ? 0 : 1;
+    const scene = game.scenes[game.currentScene];
+    const player2 = this.getPlayer2(config, game);
+    if (config.selectedIndex === 0) {
+      resetWorld(scene.worlds[0]);
+      if (!config.cacheKeys) {
         const keysIndex = player2.components.findIndex((c) => c instanceof MovementKeysComponent);
-        // eslint-disable-next-line prefer-destructuring
-        menu.cacheKeys = player2.components.splice(keysIndex, 1)[0];
-        if (menu.cacheAI) player2.components.push(menu.cacheAI);
+        // eslint-disable-next-line no-param-reassign,prefer-destructuring
+        config.cacheKeys = player2.components.splice(keysIndex, 1)[0];
+        if (config.cacheAI) player2.components.push(config.cacheAI);
       }
-      else if (menu.selectedIndex === 1) {
+    }
+    else if (config.selectedIndex === 1) {
+      resetWorld(scene.worlds[0]);
+      if (!config.cacheAI) {
         const aiIndex = player2.components.findIndex((c) => c instanceof AIMovementComponent);
-        // eslint-disable-next-line prefer-destructuring
-        menu.cacheAI = player2.components.splice(aiIndex, 1)[0];
-        if (menu.cacheKeys) player2.components.push(menu.cacheKeys);
+        // eslint-disable-next-line no-param-reassign,prefer-destructuring
+        config.cacheAI = player2.components.splice(aiIndex, 1)[0];
+        if (config.cacheKeys) player2.components.push(config.cacheKeys);
       }
-    });
+    }
   }
 
   getPlayer2(menu, game) {
@@ -256,31 +258,159 @@ export class MainMenuSystem {
   }
 }
 
-export class PauseMenuSystem {
-  run({ entities }, game) {
+export class PauseGameSystem {
+  run(world, game) {
     const { keyboard } = game.inputState;
     const { worlds } = game.scenes[game.currentScene];
-    if (!worlds[1].active && keyboard.clickedKeys[KeyboardKeys.Enter]) {
+    if (!worlds[0].paused && !worlds[1].active && keyboard.clickedKeys[KeyboardKeys.Enter]) {
       worlds[0].paused = true;
       worlds[1].active = true;
-    }
-    else {
-      entities.forEach((e) => {
-        const menu = e.components.find((c) => c instanceof KeyboardTextMenuComponent);
-        if (!menu || !menu.selected) return;
-        const options = entities.filter((e2) => menu.options.includes(e2.id));
-        if (options.length === 0) return;
-        if (menu.selectedIndex === 0) {
-          worlds[0].paused = false;
-          worlds[1].active = false;
-        }
-        else if (menu.selectedIndex === 1) {
-          worlds[0].paused = false;
-          worlds[1].active = false;
-          // eslint-disable-next-line no-param-reassign
-          game.currentScene = 0;
-        }
+      worlds[1].entities.forEach((e) => {
+        const render = e.components.find((c) => c instanceof RenderComponent);
+        const fade = e.components.find((c) => c instanceof FadeComponent);
+        if (!fade || !render) return;
+        render.color[3] = fade.min;
       });
     }
+  }
+}
+
+export class PauseMenuSystem {
+  run({ config }, game) {
+    if (config.tag !== MenuTypes.PAUSE) return;
+    const { worlds } = game.scenes[game.currentScene];
+    if (config.selected && config.selectedIndex === 0) {
+      worlds[0].paused = false;
+      worlds[1].active = false;
+    }
+    else if (config.selected && config.selectedIndex === 1) {
+      worlds[0].paused = false;
+      worlds[1].active = false;
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 0;
+    }
+  }
+}
+
+export class EngGameMenuSystem {
+  run({ config }, game) {
+    const { worlds } = game.scenes[game.currentScene];
+    if (config.tag !== MenuTypes.FINISH) return;
+    const tuples = [];
+    let title = null;
+    worlds[0].entities.forEach((e) => {
+      const score = e.components.find((c) => c instanceof ScoreComponent);
+      if (!score) return;
+      const keys = e.components.find((c) => c instanceof MovementKeysComponent);
+      const ai = e.components.find((c) => c instanceof AIMovementComponent);
+      tuples.push([score, ai, keys]);
+    });
+    worlds[2].entities.forEach((e) => {
+      const text = e.components.find((c) => c instanceof TextComponent);
+      const option = e.components.find((c) => c instanceof MenuOptionComponent);
+      if (!text || option) return;
+      title = text;
+    });
+    const [player1, player2] = tuples;
+    let titleText = 'End game';
+    if (player1[0].points > player2[0].points) {
+      titleText = player2[1] ? 'You win' : 'Player 1 wins';
+    }
+    else {
+      titleText = player2[1] ? 'You lose' : 'Player 2 wins';
+    }
+    title.content = titleText;
+
+    if (config.selected && config.selectedIndex === 0) {
+      worlds[0].paused = false;
+      worlds[2].active = false;
+      resetWorld(worlds[0]);
+    }
+    else if (config.selected && config.selectedIndex === 1) {
+      worlds[0].paused = false;
+      worlds[2].active = false;
+      // eslint-disable-next-line no-param-reassign
+      game.currentScene = 0;
+    }
+  }
+}
+
+export class TextMenuSystem {
+  run(menu) {
+    const { config } = menu;
+    const { lastSelectedIndex } = config;
+
+    const selectedText = menu.entities[config.selectedIndex]
+      .components.find((c) => c instanceof TextComponent);
+    selectedText.color = config.selectedColor;
+    if (lastSelectedIndex !== config.selectedIndex) {
+      const oldText = menu.entities[lastSelectedIndex]
+        .components.find((c) => c instanceof TextComponent);
+      oldText.color = config.defaultColor;
+    }
+  }
+}
+
+export class KeyboardMenuSystem {
+  run(menu, game) {
+    const { keyboard } = game.inputState;
+    const { config } = menu;
+    config.selected = false;
+    config.lastSelectedIndex = config.selectedIndex;
+    if (keyboard.clickedKeys[config.keys.next]) {
+      config.selectedIndex++;
+      if (config.selectedIndex === menu.entities.length) {
+        config.selectedIndex = config.inLoop ? 0 : menu.entities.length - 1;
+      }
+    }
+    else if (keyboard.clickedKeys[config.keys.prev]) {
+      config.selectedIndex--;
+      if (config.selectedIndex < 0) {
+        config.selectedIndex = config.inLoop ? menu.entities.length - 1 : 0;
+      }
+    }
+    else if (keyboard.clickedKeys[config.keys.enter]) {
+      config.selected = true;
+      // if (option.selected)
+    }
+
+    menu.entities.forEach((e, i) => {
+      const option = e.components.find((c) => c instanceof MenuOptionComponent);
+      option.selected = false;
+      option.hovered = i === config.selectedIndex;
+    });
+  }
+}
+
+export class MenuEngine {
+  systems = [];
+
+  run(world, game) {
+    this.systems.forEach((system) => {
+      if (system.preRun) system.preRun(world, game);
+    });
+    const menus = {};
+    const keys = [];
+    world.entities.forEach((e) => {
+      const option = e.components.find((c) => c instanceof MenuOptionComponent);
+      const config = e.components.find((c) => c instanceof MenuConfigComponent);
+      if (!option && !config) return;
+      const { tag } = option || config;
+      if (!menus[tag]) {
+        menus[tag] = { entities: [] };
+        keys.push(tag);
+      }
+      if (option) menus[tag].entities.push(e);
+      if (config) menus[tag].config = config;
+    });
+
+    keys.forEach((key) => {
+      this.systems.forEach((system) => {
+        if (system.run) system.run(menus[key], game);
+      });
+    });
+    this.systems.forEach((system) => {
+      if (system.posRun) system.posRun(world, game);
+    });
   }
 }

@@ -35,6 +35,7 @@ _Reference examples here <https://gamethemedgroup.github.io/GTCS-GameEngine/inde
 -[] Add capability to turn on and off systems
 -[] Add way to extend the existing engines adding new systems
 -[] Add way to add new engines
+-[] Add way to reset the scenes and worlds easily
 -[] Do the samples with advanced particles
 -[] Do the samples with advanced physics
 -[] Do the samples with IDE editor

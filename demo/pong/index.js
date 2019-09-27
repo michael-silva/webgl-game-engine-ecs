@@ -1,17 +1,7 @@
 import {
   WorldCoordinateComponent, CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
-import { MenuScene, PlayScene } from './scenes';
-
-/*
-Add win scene
-Add lose scene
-Add end menu
-Add background to menu
-Add fade effect to menus
-Change the font color
-Basic refac to fix no-new
-*/
+import { createPlayScene, createTitleScene } from './scenes';
 
 export default (game) => {
   const camera = new CameraEntity();
@@ -23,8 +13,6 @@ export default (game) => {
     array: [0, 0, 1280, 720],
   }));
 
-  // eslint-disable-next-line no-new
-  new MenuScene(game, camera);
-  // eslint-disable-next-line no-new
-  new PlayScene(game, camera);
+  createTitleScene(game, camera);
+  createPlayScene(game, camera);
 };

@@ -44,3 +44,30 @@ export class SolidComponent {
     this.relative = relative;
   }
 }
+
+export class FadeComponent {
+  constructor({ min = 0, max = 1, delta = 0.1 } = {}) {
+    this.min = min;
+    this.max = max;
+    this.delta = delta;
+  }
+}
+
+export class MenuOptionComponent {
+  constructor({ tag }) {
+    this.tag = tag;
+  }
+}
+
+export class MenuConfigComponent {
+  constructor({
+    tag, keys, defaultColor, selectedColor,
+  }) {
+    this.tag = tag;
+    this.keys = keys;
+    this.selectedColor = selectedColor;
+    this.defaultColor = defaultColor;
+    this.selectedIndex = 0;
+    this.inLoop = true;
+  }
+}
