@@ -1,17 +1,17 @@
+import { GameObject } from '@wge/core';
+import {
+  TransformUtils, BoundingUtils, CameraUtils, TransformComponent,
+} from '@wge/core/utils';
+import { KeyboardKeys } from '@wge/core/input-system';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent,
+} from '@wge/core/camera';
+import { RenderComponent, TextComponent } from '@wge/core/render-engine';
+import { Minion, Hero, Brain } from './objects';
 import {
   MovementComponent,
   MovementSystem, KeyboardMovementSystem, RotationKeysComponent, KeyboardRotationSystem,
 } from './shared';
-import { GameObject } from '../src';
-import {
-  TransformUtils, BoundingUtils, CameraUtils, TransformComponent,
-} from '../src/utils';
-import { KeyboardKeys } from '../src/input-system';
-import { Minion, Hero, Brain } from './objects';
-import {
-  CameraEntity, WorldCoordinateComponent, ViewportComponent,
-} from '../src/camera';
-import { RenderComponent, TextComponent } from '../src/render-engine';
 
 class MovementLimitComponent {
   constructor({

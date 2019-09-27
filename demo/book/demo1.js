@@ -1,14 +1,14 @@
-import { TransformComponent, TransformUtils, Color } from '../src/utils';
+import { TransformComponent, TransformUtils, Color } from '@wge/core/utils';
+
+import {
+  WorldCoordinateComponent, CameraEntity, ViewportComponent,
+} from '@wge/core/camera';
+import { AudioSystem } from '@wge/core/audio-system';
+import { KeyboardKeys } from '@wge/core/input-system';
 import {
   MovementComponent, MovementKeysComponent,
   KeyboardMovementSystem, MovementSystem,
 } from './shared';
-
-import {
-  WorldCoordinateComponent, CameraEntity, ViewportComponent,
-} from '../src/camera';
-import { AudioSystem } from '../src/audio-system';
-import { KeyboardKeys } from '../src/input-system';
 import { Rectangle } from './objects';
 
 

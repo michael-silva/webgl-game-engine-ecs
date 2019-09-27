@@ -1,12 +1,12 @@
-import { GameObject } from '../src';
-import { MovementComponent, MovementKeysComponent } from './shared';
-import { KeyboardKeys } from '../src/input-system';
+import { GameObject } from '@wge/core';
+import { KeyboardKeys } from '@wge/core/input-system';
 import {
   SpriteAnimation, RenderComponent, Material, AnimationType,
   BackgroundRenderComponent, ShadowReceiverComponent,
-} from '../src/render-engine';
-import { TransformComponent } from '../src/utils';
-import { RigidCircleComponent, RigidRectangleComponent } from '../src/physics-system';
+} from '@wge/core/render-engine';
+import { TransformComponent } from '@wge/core/utils';
+import { RigidCircleComponent, RigidRectangleComponent } from '@wge/core/physics-system';
+import { MovementComponent, MovementKeysComponent } from './shared';
 
 export class Rectangle extends GameObject {
   constructor({

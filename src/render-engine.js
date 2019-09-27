@@ -109,12 +109,13 @@ class RenderUtils {
     const {
       color, texture, sprite,
       normalMap, material, illumination,
+      sharp,
     } = renderable;
     const textureAsset = texture ? resourceMap[texture].asset : renderable.textureAsset;
     const shader = optShader || RenderUtils.selectShader(shaders, textureAsset, renderable);
 
     if (textureAsset) {
-      RenderUtils.activateTexture(gl, textureAsset);
+      RenderUtils.activateTexture(gl, textureAsset, sharp);
     }
     RenderUtils.activateShader(gl, vertexBuffer, shader, color, camera);
     RenderUtils.activateGlobalLight(gl, shader, ambientColor, ambientIntensity);
@@ -344,7 +345,7 @@ class RenderUtils {
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(textureCoordinate));
   }
 
-  static activateTexture(gl, textureInfo) {
+  static activateTexture(gl, textureInfo, sharp) {
     // Binds our texture reference to the current webGL texture functionality
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textureInfo.texID);
@@ -354,10 +355,12 @@ class RenderUtils {
     // Handles how magnification and minimization filters will work.
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-    // For pixel-graphics where you want the texture to look "sharp"
-    //     do the following:
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    if (sharp) {
+      // For pixel-graphics where you want the texture to look "sharp"
+      //     do the following:
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    }
   }
 
   static activateNormalMap(gl, textureInfo) {
@@ -397,7 +400,9 @@ export class BackgroundRenderComponent {
     textureAsset, sprite,
     normalMap, normapMapAsset,
     material, type, illumination = true,
+    sharp,
   } = {}) {
+    this.sharp = sharp;
     this.illumination = illumination;
     this.type = type || BackgroundTypes.Normal;
     this.color = color;
@@ -417,7 +422,9 @@ export class RenderComponent {
     textureAsset, sprite,
     normalMap, normapMapAsset,
     material, illumination = true,
+    sharp,
   } = {}) {
+    this.sharp = sharp;
     this.illumination = illumination;
     this.color = color;
     this.texture = texture;

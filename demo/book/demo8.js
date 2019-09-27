@@ -1,21 +1,21 @@
 import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
-} from '../src/camera';
+} from '@wge/core/camera';
+import { KeyboardKeys } from '@wge/core/input-system';
+import { GameObject } from '@wge/core';
+import { TransformComponent } from '@wge/core/utils';
 import {
-  Rectangle, MinionMap, HeroMap, Hero, Background,
-} from './objects';
+  ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
+  RenderComponent, Material, Light, LightType, BackgroundRenderComponent,
+} from '@wge/core/render-engine';
 import {
   RotationKeysComponent, KeyboardMovementSystem,
   KeyboardRotationSystem, MovementSystem,
 } from './shared';
-import { KeyboardKeys } from '../src/input-system';
-import { GameObject } from '../src';
-import { TransformComponent } from '../src/utils';
 import {
-  ShadowReceiverComponent, ShadowCasterComponent, TextComponent,
-  RenderComponent, Material, Light, LightType, BackgroundRenderComponent,
-} from '../src/render-engine';
+  Rectangle, MinionMap, HeroMap, Hero, Background,
+} from './objects';
 
 class GlobalLightControlSystem {
   run(world, { inputState, scenes, currentScene }) {

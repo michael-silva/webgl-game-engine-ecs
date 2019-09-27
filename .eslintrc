@@ -12,6 +12,13 @@
     "babel",
     "prettier"
   ],
+  "settings": {
+    "import/resolver": {
+      "webpack": {
+        "config": "webpack.config.js"
+      }
+    }
+  },
   "rules": {
     "class-methods-use-this": "off",
     "import/prefer-default-export": "off",

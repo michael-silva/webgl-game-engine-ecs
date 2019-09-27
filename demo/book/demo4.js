@@ -1,19 +1,19 @@
 import {
   SpriteAnimation, TextComponent, RenderComponent, AnimationType,
-} from '../src/render-engine';
+} from '@wge/core/render-engine';
+import { GameObject } from '@wge/core';
+import {
+  Color, RenderUtils, TransformComponent,
+} from '@wge/core/utils';
+import { KeyboardKeys } from '@wge/core/input-system';
+import {
+  CameraEntity, WorldCoordinateComponent, ViewportComponent,
+} from '@wge/core/camera';
+import { Rectangle } from './objects';
 import {
   MovementComponent, MovementKeysComponent,
   MovementSystem, KeyboardMovementSystem,
 } from './shared';
-import { GameObject } from '../src';
-import {
-  Color, RenderUtils, TransformComponent,
-} from '../src/utils';
-import { KeyboardKeys } from '../src/input-system';
-import { Rectangle } from './objects';
-import {
-  CameraEntity, WorldCoordinateComponent, ViewportComponent,
-} from '../src/camera';
 
 class ColorUpdateComponent {
   constructor({ color }) {

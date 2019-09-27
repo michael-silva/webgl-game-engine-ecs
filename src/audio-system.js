@@ -36,29 +36,33 @@ export class AudioSystem {
 
   run({ entities }, { resourceMap }) {
     entities.forEach((e) => {
-      const audio = e.components.find((c) => c instanceof AudioComponent);
-      if (!audio || !resourceMap[audio.src] || !resourceMap[audio.src].loaded) return;
-      if (!audio.clip) {
-        if (audio.decoding) return;
-        audio.decoding = true;
-        this._audioContext.decodeAudioData(resourceMap[audio.src].asset)
-          .then((clip) => {
-            audio.decoding = false;
-            audio.clip = clip;
-          });
-        return;
+      const audios = e.components.filter((c) => c instanceof AudioComponent);
+      if (!audios || audios.length === 0) return;
+      for (let i = 0; i < audios.length; i++) {
+        const audio = audios[i];
+        if (!audio || !resourceMap[audio.src] || !resourceMap[audio.src].loaded) return;
+        if (!audio.clip) {
+          if (audio.decoding) return;
+          audio.decoding = true;
+          this._audioContext.decodeAudioData(resourceMap[audio.src].asset)
+            .then((clip) => {
+              audio.decoding = false;
+              audio.clip = clip;
+            });
+          return;
+        }
+        if (!audio.play || !audio.ended) return;
+        // SourceNodes are one use only.
+        const sourceNode = this._audioContext.createBufferSource();
+        sourceNode.buffer = audio.clip;
+        sourceNode.connect(this._audioContext.destination);
+        sourceNode.start(0);
+        sourceNode.addEventListener('ended', () => {
+          audio.ended = true;
+        });
+        audio.ended = false;
+        audio.play = false;
       }
-      if (!audio.play || !audio.ended) return;
-      // SourceNodes are one use only.
-      const sourceNode = this._audioContext.createBufferSource();
-      sourceNode.buffer = audio.clip;
-      sourceNode.connect(this._audioContext.destination);
-      sourceNode.start(0);
-      sourceNode.addEventListener('ended', () => {
-        audio.ended = true;
-      });
-      audio.ended = false;
-      audio.play = false;
     });
   }
 }

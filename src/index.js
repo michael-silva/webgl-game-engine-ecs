@@ -194,10 +194,10 @@ class GameScene {
 
 // @orchestrator
 export class GameEngine {
-  constructor(canvas) {
+  constructor(canvas, config) {
     this._game = new GameEntity();
     // TODO: Refactor to create a generic system of engines
-    this._game.renderEngine = new RenderEngine(canvas);
+    this._game.renderEngine = new RenderEngine(canvas, config.bgColor);
     this._game.renderState = this._game.renderEngine.state;
     this._game.inputEngine = new InputEngine(canvas);
     this._game.inputState = this._game.inputEngine.state;
