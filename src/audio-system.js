@@ -73,10 +73,9 @@ export class SoundSystem {
     this._sound = null;
   }
 
-  run(game) {
-    const { scenes, currentScene, resourceMap } = game;
-    const scene = scenes[currentScene];
-    const { sound } = scene;
+  run(world, game) {
+    const { resourceMap } = game;
+    const { sound } = world;
 
     if (!sound || (!sound.play && !sound.playing)) {
       this._clear();

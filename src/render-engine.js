@@ -101,9 +101,9 @@ class RenderUtils {
     return shaders.simpleShader;
   }
 
-  static renderEntity(game, camera, renderable, transform, optShader) {
-    const { resourceMap, scenes, currentScene } = game;
-    const { ambientColor, ambientIntensity } = scenes[currentScene].globalLight;
+  static renderEntity(game, camera, scene, renderable, transform, optShader) {
+    const { resourceMap } = game;
+    const { ambientColor, ambientIntensity } = scene.globalLight;
     const { gl, buffers, shaders } = game.renderState;
     const { vertexBuffer, textureBuffer, spriteBuffer } = buffers;
     const {
@@ -133,7 +133,6 @@ class RenderUtils {
       }
 
       if (shader.lights) {
-        const scene = scenes[currentScene];
         RenderUtils.activateLightsArray(gl, shader, scene);
         scene.lights.forEach((light, i) => {
           if (light.isOn) {
@@ -499,7 +498,7 @@ export class LineShape {
 
 // @system
 export class RigidShapeRenderSystem {
-  render(entity, camera, game) {
+  render(entity, camera, scene, game) {
     const { gl, shaders, buffers } = game.renderState;
     const shader = shaders.lineShader;
     const { lineBuffer } = buffers;
@@ -595,7 +594,7 @@ export class TextComponent {
 
 // @system
 export class TextRenderSystem {
-  render(entity, camera, game) {
+  render(entity, camera, scene, game) {
     const { resourceMap } = game;
     entity.components
       .filter((c) => c instanceof TextComponent)
@@ -612,7 +611,7 @@ export class TextRenderSystem {
         }
         text.characters.forEach((char) => {
           const { renderable, transform } = char;
-          RenderUtils.renderEntity(game, camera, renderable, transform);
+          RenderUtils.renderEntity(game, camera, scene, renderable, transform);
         });
       });
   }
@@ -666,7 +665,7 @@ export class TextRenderSystem {
 
 // @system
 export class TextureRenderSystem {
-  render(entity, camera, game) {
+  render(entity, camera, scene, game) {
     const { renderState } = game;
     const renderable = entity.components.find((c) => c instanceof RenderComponent);
     const transform = entity.components.find((c) => c instanceof TransformComponent);
@@ -677,19 +676,19 @@ export class TextureRenderSystem {
       : renderState.shaders.simpleShader;
     if (!shader || !shader.modelTransform) return;
     if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
-    RenderUtils.renderEntity(game, camera, renderable, transform);
+    RenderUtils.renderEntity(game, camera, scene, renderable, transform);
   }
 }
 
 export class ShadowRenderUtils {
-  static renderReceiverShadow(game, camera, receiver, transform, renderable, casters) {
+  static renderReceiverShadow(game, camera, scene, receiver, transform, renderable, casters) {
     const { shaders, gl } = game.renderState;
     const { texture } = renderable;
     if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
     // A: draw receiver as a regular renderable
     ShadowRenderUtils.shadowRecieverStencilOn(gl, receiver); // B1;
     const shader = shaders.shadowReceiverShader;
-    RenderUtils.renderEntity(game, camera, renderable, transform, shader); // B2
+    RenderUtils.renderEntity(game, camera, scene, renderable, transform, shader); // B2
     ShadowRenderUtils.shadowRecieverStencilOff(gl, receiver); // B3
     // C + D: now draw shadow color to the pixels in the stencil that are switched on
     for (let i = 0; i < casters.length; i++) {
@@ -697,7 +696,7 @@ export class ShadowRenderUtils {
       const casterTransform = casters[i].components.find((c) => c instanceof TransformComponent);
       if (casterRenderable && casterTransform && casterTransform.z > transform.z) {
         const caster = casters[i].components.find((c) => c instanceof ShadowCasterComponent);
-        ShadowRenderUtils.renderShadowCaster(game, camera, transform,
+        ShadowRenderUtils.renderShadowCaster(game, camera, scene, transform,
           caster, casterRenderable, casterTransform);
       }
     }
@@ -705,9 +704,8 @@ export class ShadowRenderUtils {
     ShadowRenderUtils.shadowRecieverStencilDisable(gl);
   }
 
-  static renderShadowCaster(game, camera, receiverTransform, caster,
+  static renderShadowCaster(game, camera, scene, receiverTransform, caster,
     casterRenderable, casterTransform) {
-    const scene = game.scenes[game.currentScene];
     const color = [...casterRenderable.color];
     // eslint-disable-next-line no-param-reassign
     casterRenderable.color = caster.shadowColor;
@@ -722,7 +720,7 @@ export class ShadowRenderUtils {
         if (transform) {
           // eslint-disable-next-line no-param-reassign
           shader.light = lgt;
-          RenderUtils.renderEntity(game, camera, casterRenderable, transform, shader); // B2
+          RenderUtils.renderEntity(game, camera, scene, casterRenderable, transform, shader); // B2
         }
       }
     }
@@ -817,14 +815,14 @@ export class ShadowRenderSystem {
       .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
   }
 
-  render(entity, camera, game) {
+  render(entity, camera, scene, game) {
     if (this.casters.length === 0) return;
     const renderable = entity.components.find((c) => c instanceof RenderComponent);
     const transform = entity.components.find((c) => c instanceof TransformComponent);
     const receiver = entity.components.find((c) => c instanceof ShadowReceiverComponent);
     if (!renderable || !transform || !receiver) return;
 
-    ShadowRenderUtils.renderReceiverShadow(game, camera, receiver,
+    ShadowRenderUtils.renderReceiverShadow(game, camera, scene, receiver,
       transform, renderable, this.casters);
   }
 }
@@ -840,7 +838,7 @@ export class ParticleRenderComponent {
 }
 
 export class ParticleRenderSystem {
-  render(e, camera, game) {
+  render(e, camera, scene, game) {
     const { gl, shaders } = game.renderState;
     const { resourceMap } = game;
     const transform = e.components.find((c) => c instanceof TransformComponent);
@@ -849,7 +847,7 @@ export class ParticleRenderSystem {
       || !resourceMap[renderable.texture] || !resourceMap[renderable.texture].loaded) return;
 
     gl.blendFunc(gl.ONE, gl.ONE); // for additive blending!
-    RenderUtils.renderEntity(game, camera, renderable, transform, shaders.particleShader);
+    RenderUtils.renderEntity(game, camera, scene, renderable, transform, shaders.particleShader);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // restore alpha blending
   }
 }
@@ -861,7 +859,7 @@ export class BackgroundRenderSystem {
       .filter((e) => e.components.some((c) => c instanceof ShadowCasterComponent));
   }
 
-  render(entity, camera, game) {
+  render(entity, camera, scene, game) {
     const { renderState } = game;
     const renderable = entity.components.find((c) => c instanceof BackgroundRenderComponent);
     const transform = entity.components.find((c) => c instanceof TransformComponent);
@@ -873,18 +871,18 @@ export class BackgroundRenderSystem {
     if (!shader || !shader.modelTransform) return;
     if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
 
-    this._renderEntity(game, camera, renderable, transform);
+    this._renderEntity(game, camera, scene, renderable, transform);
 
     const shadowReceiver = entity.components.find((c) => c instanceof ShadowReceiverComponent);
     if (shadowReceiver && this.casters.length > 0) {
-      this._renderReceiverShadow(game, camera, shadowReceiver,
+      this._renderReceiverShadow(game, camera, scene, shadowReceiver,
         transform, renderable, this.casters);
     }
   }
 
-  _renderEntity(game, camera, renderable, transform, shader) {
+  _renderEntity(game, camera, scene, renderable, transform, shader) {
     if (renderable.type === BackgroundTypes.Tiled) {
-      this._drawTile(game, camera, transform, renderable, shader);
+      this._drawTile(game, camera, scene, transform, renderable, shader);
     }
     else {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -894,11 +892,11 @@ export class BackgroundRenderSystem {
           transform.position[0] + worldCoordinate.center[0],
           transform.position[1] + worldCoordinate.center[1],
         ];
-      RenderUtils.renderEntity(game, camera, renderable, { ...transform, position }, shader);
+      RenderUtils.renderEntity(game, camera, scene, renderable, { ...transform, position }, shader);
     }
   }
 
-  _drawTile(game, camera, transform, renderable, shader) {
+  _drawTile(game, camera, scene, transform, renderable, shader) {
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const viewport = camera.components.find((c) => c instanceof ViewportComponent);
     // Step A: Compute the positions and dimensions of tiling object.
@@ -959,7 +957,7 @@ export class BackgroundRenderSystem {
       cx = nx;
       pos[0] = xPos;
       while (cx >= 0) {
-        RenderUtils.renderEntity(game, camera, renderable, transform, shader);
+        RenderUtils.renderEntity(game, camera, scene, renderable, transform, shader);
         // eslint-disable-next-line no-param-reassign
         transform.position[0] += w;
         --cx;
@@ -974,14 +972,14 @@ export class BackgroundRenderSystem {
     pos[1] = sY;
   }
 
-  _renderReceiverShadow(game, camera, receiver, transform, renderable, casters) {
+  _renderReceiverShadow(game, camera, scene, receiver, transform, renderable, casters) {
     const { shaders, gl } = game.renderState;
     const { texture } = renderable;
     if (texture && (!game.resourceMap[texture] || !game.resourceMap[texture].loaded)) return;
     // A: draw receiver as a regular renderable
     ShadowRenderUtils.shadowRecieverStencilOn(gl, receiver); // B1;
     const shader = shaders.shadowReceiverShader;
-    this._renderEntity(game, camera, renderable, transform, shader); // B2
+    this._renderEntity(game, camera, scene, renderable, transform, shader); // B2
     ShadowRenderUtils.shadowRecieverStencilOff(gl, receiver); // B3
     // C + D: now draw shadow color to the pixels in the stencil that are switched on
     for (let i = 0; i < casters.length; i++) {
@@ -989,7 +987,7 @@ export class BackgroundRenderSystem {
       const casterTransform = casters[i].components.find((c) => c instanceof TransformComponent);
       if (casterRenderable && casterTransform && casterTransform.z > transform.z) {
         const caster = casters[i].components.find((c) => c instanceof ShadowCasterComponent);
-        ShadowRenderUtils.renderShadowCaster(game, camera, transform,
+        ShadowRenderUtils.renderShadowCaster(game, camera, scene, transform,
           caster, casterRenderable, casterTransform);
       }
     }
@@ -1038,14 +1036,14 @@ export class RenderEngine {
   }
 
   run(game) {
-    const scene = game.scenes[game.currentScene];
-
-    scene.cameras.forEach((camera) => {
+    game.cameras.forEach((camera) => {
+      if (camera.disabled) return;
       this._setupViewProjection(this.state.gl, camera);
-      scene.worlds.forEach((world) => {
-        if (!world.active) return;
+      game.scenes.forEach((scene) => {
+        if (!scene.active) return;
+        const world = scene.worlds[scene.currentWorld];
         this.systems.forEach((system) => {
-          if (system.preRender) system.preRender(world, camera, game);
+          if (system.preRender) system.preRender(world, camera, scene, game);
         });
         const layers = [];
         world.entities.forEach((e) => {
@@ -1056,12 +1054,12 @@ export class RenderEngine {
         layers.forEach((entities) => {
           entities.forEach((e) => {
             this.systems.forEach((system) => {
-              if (system.render) system.render(e, camera, game);
+              if (system.render) system.render(e, camera, scene, game);
             });
           });
         });
         this.systems.forEach((system) => {
-          if (system.posRender) system.posRender(world, camera, game);
+          if (system.posRender) system.posRender(world, camera, scene, game);
         });
       });
     });

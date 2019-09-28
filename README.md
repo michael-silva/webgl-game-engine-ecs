@@ -24,16 +24,13 @@ _Reference examples here <https://gamethemedgroup.github.io/GTCS-GameEngine/inde
 ## Task to complete version 1
 
 -[x] Create a pong demo
--[] refactor the spaces
-  - Game has a list of active scenes
-  - Scenes has just one current world
-  - Scenes has a list of active cameras and systems
-  - Worlds has components with values to be used in systems
-  - States are a collection of active scenes and current worlds, and active systems / cameras
-  - Change the states to update in next loop the scene or world
--[] Add capability to turn on and off systems
--[] Add way to extend the existing engines adding new systems
--[] Add way to add new engines
+-[x] Invert the relation one to many scenes/world
+-[x] Add capability to turn on and off game cameras
+-[x] Add capability to turn on and off systems
+-[x] Add way to extend the existing engines adding new systems
+-[x] Add way to add new engines
+-[] Create a system of states as a collection of active scenes and current worlds, and active systems / cameras
+-[] Refacor and improve the render layer system
 -[] Add way to reset the scenes and worlds easily
 -[] Create the final project game
 -[] Do the samples with advanced particles

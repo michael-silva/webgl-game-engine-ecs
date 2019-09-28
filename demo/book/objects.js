@@ -1,5 +1,5 @@
 import { GameObject } from '@wge/core';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import {
   SpriteAnimation, RenderComponent, Material, AnimationType,
   BackgroundRenderComponent, ShadowReceiverComponent,

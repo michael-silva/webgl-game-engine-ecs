@@ -46,6 +46,8 @@ export class PerRenderCache {
 
 
 export class CameraEntity {
+  disabled = false;
+
   components = []
 
   constructor() {

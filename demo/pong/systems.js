@@ -2,7 +2,7 @@
 import { TransformComponent, CameraUtils, BoundingUtils } from '@wge/core/utils';
 import { TextComponent, RenderComponent } from '@wge/core/render-engine';
 import { WorldCoordinateComponent, ViewportComponent } from '@wge/core/camera';
-import { KeyboardKeys } from '@wge/core/input-system';
+import { KeyboardKeys } from '@wge/core/input-engine';
 import { CollisionUtils } from '@wge/core/physics-system';
 import { AudioComponent } from '@wge/core/audio-system';
 import {
@@ -17,6 +17,11 @@ import {
   FadeComponent,
 } from './components';
 
+
+export const Scenes = Object.freeze({
+  PLAY: 0,
+  MENU: 1,
+});
 
 export class MovementSystem {
   run({ entities }) {
@@ -69,8 +74,8 @@ export class IAMovementSystem {
 export class ScoreSystem {
   maxPoints = 1;
 
-  run({ entities }, { scenes, currentScene }) {
-    const { worlds } = scenes[currentScene];
+  run({ entities }, game) {
+    const { scenes } = game;
     const collideds = [];
     entities.forEach((e) => {
       const boundary = e.components.find((c) => c instanceof BoundaryComponent);
@@ -96,9 +101,10 @@ export class ScoreSystem {
             text.content = score.points.toString();
           }
           if (score.points > this.maxPoints) {
-            worlds[0].paused = true;
-            worlds[2].active = true;
-            worlds[2].entities.forEach((e2) => {
+            scenes[Scenes.PLAY].paused = true;
+            scenes[Scenes.MENU].active = true;
+            scenes[Scenes.MENU].currentWorld = 2;
+            scenes[Scenes.MENU].worlds[2].entities.forEach((e2) => {
               const render = e2.components.find((c) => c instanceof RenderComponent);
               const fade = e2.components.find((c) => c instanceof FadeComponent);
               if (!fade || !render) return;
@@ -112,8 +118,7 @@ export class ScoreSystem {
 }
 
 export class RespawnSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { cameras }) {
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
       const movement = e.components.find((c) => c instanceof MovementComponent);
@@ -196,6 +201,7 @@ export class SolidCollisionSystem {
   }
 }
 
+
 export const MenuTypes = Object.freeze({
   TITLE: 'title',
   PAUSE: 'pause',
@@ -221,12 +227,13 @@ function resetWorld(world) {
 export class TitleMenuSystem {
   run({ config }, game) {
     if (config.tag !== MenuTypes.TITLE || !config.selected) return;
-    // eslint-disable-next-line no-param-reassign
-    game.currentScene = config.selectedIndex === 2 ? 0 : 1;
-    const scene = game.scenes[game.currentScene];
-    const player2 = this.getPlayer2(config, game);
+    if (config.selectedIndex === 2) return;
+    const { scenes } = game;
+    scenes[Scenes.MENU].active = false;
+    scenes[Scenes.PLAY].active = true;
+    const player2 = this.getPlayer2(config, scenes[Scenes.PLAY]);
     if (config.selectedIndex === 0) {
-      resetWorld(scene.worlds[0]);
+      resetWorld(scenes[Scenes.PLAY].worlds[0]);
       if (!config.cacheKeys) {
         const keysIndex = player2.components.findIndex((c) => c instanceof MovementKeysComponent);
         // eslint-disable-next-line no-param-reassign,prefer-destructuring
@@ -235,7 +242,7 @@ export class TitleMenuSystem {
       }
     }
     else if (config.selectedIndex === 1) {
-      resetWorld(scene.worlds[0]);
+      resetWorld(scenes[Scenes.PLAY].worlds[0]);
       if (!config.cacheAI) {
         const aiIndex = player2.components.findIndex((c) => c instanceof AIMovementComponent);
         // eslint-disable-next-line no-param-reassign,prefer-destructuring
@@ -245,8 +252,7 @@ export class TitleMenuSystem {
     }
   }
 
-  getPlayer2(menu, game) {
-    const scene = game.scenes[game.currentScene];
+  getPlayer2(menu, scene) {
     const { entities } = scene.worlds[0];
     const player2 = menu.player2Id
       ? entities.find((e) => e.id === menu.player2Id)
@@ -261,11 +267,13 @@ export class TitleMenuSystem {
 export class PauseGameSystem {
   run(world, game) {
     const { keyboard } = game.inputState;
-    const { worlds } = game.scenes[game.currentScene];
-    if (!worlds[0].paused && !worlds[1].active && keyboard.clickedKeys[KeyboardKeys.Enter]) {
-      worlds[0].paused = true;
-      worlds[1].active = true;
-      worlds[1].entities.forEach((e) => {
+    const { scenes } = game;
+    if (!scenes[Scenes.PLAY].paused && !scenes[Scenes.MENU].active
+      && keyboard.clickedKeys[KeyboardKeys.Enter]) {
+      scenes[Scenes.PLAY].paused = true;
+      scenes[Scenes.MENU].active = true;
+      scenes[Scenes.MENU].currentWorld = 1;
+      scenes[Scenes.MENU].worlds[1].entities.forEach((e) => {
         const render = e.components.find((c) => c instanceof RenderComponent);
         const fade = e.components.find((c) => c instanceof FadeComponent);
         if (!fade || !render) return;
@@ -278,34 +286,34 @@ export class PauseGameSystem {
 export class PauseMenuSystem {
   run({ config }, game) {
     if (config.tag !== MenuTypes.PAUSE) return;
-    const { worlds } = game.scenes[game.currentScene];
+    const { scenes } = game;
     if (config.selected && config.selectedIndex === 0) {
-      worlds[0].paused = false;
-      worlds[1].active = false;
+      scenes[Scenes.PLAY].paused = false;
+      scenes[Scenes.MENU].active = false;
     }
     else if (config.selected && config.selectedIndex === 1) {
-      worlds[0].paused = false;
-      worlds[1].active = false;
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 0;
+      scenes[Scenes.PLAY].paused = false;
+      scenes[Scenes.PLAY].active = false;
+      scenes[Scenes.MENU].active = true;
+      scenes[Scenes.MENU].currentWorld = 0;
     }
   }
 }
 
 export class EngGameMenuSystem {
   run({ config }, game) {
-    const { worlds } = game.scenes[game.currentScene];
+    const { scenes } = game;
     if (config.tag !== MenuTypes.FINISH) return;
     const tuples = [];
     let title = null;
-    worlds[0].entities.forEach((e) => {
+    scenes[Scenes.PLAY].worlds[0].entities.forEach((e) => {
       const score = e.components.find((c) => c instanceof ScoreComponent);
       if (!score) return;
       const keys = e.components.find((c) => c instanceof MovementKeysComponent);
       const ai = e.components.find((c) => c instanceof AIMovementComponent);
       tuples.push([score, ai, keys]);
     });
-    worlds[2].entities.forEach((e) => {
+    scenes[Scenes.MENU].worlds[2].entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       const option = e.components.find((c) => c instanceof MenuOptionComponent);
       if (!text || option) return;
@@ -322,15 +330,14 @@ export class EngGameMenuSystem {
     title.content = titleText;
 
     if (config.selected && config.selectedIndex === 0) {
-      worlds[0].paused = false;
-      worlds[2].active = false;
-      resetWorld(worlds[0]);
+      scenes[Scenes.PLAY].paused = false;
+      scenes[Scenes.MENU].active = false;
+      resetWorld(scenes[Scenes.MENU]);
     }
     else if (config.selected && config.selectedIndex === 1) {
-      worlds[0].paused = false;
-      worlds[2].active = false;
-      // eslint-disable-next-line no-param-reassign
-      game.currentScene = 0;
+      scenes[Scenes.PLAY].paused = false;
+      scenes[Scenes.PLAY].active = false;
+      scenes[Scenes.MENU].currentWorld = 0;
     }
   }
 }
@@ -371,7 +378,6 @@ export class KeyboardMenuSystem {
     }
     else if (keyboard.clickedKeys[config.keys.enter]) {
       config.selected = true;
-      // if (option.selected)
     }
 
     menu.entities.forEach((e, i) => {
@@ -397,7 +403,7 @@ export class MenuEngine {
       if (!option && !config) return;
       const { tag } = option || config;
       if (!menus[tag]) {
-        menus[tag] = { entities: [] };
+        menus[tag] = { entities: [], scene: world.scene };
         keys.push(tag);
       }
       if (option) menus[tag].entities.push(e);

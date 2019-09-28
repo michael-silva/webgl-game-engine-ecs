@@ -2,10 +2,6 @@
   "resources": [
     "assets/sounds/BGClip.mp3"
   ],
-  "sound": {
-    "src": "assets/sounds/BGClip.mp3",
-    "play": true
-  },
   "camera": {
     "center": [20, 60],
     "width": 20,
@@ -13,6 +9,10 @@
     "bgColor": [0.9, 0.9, 0.9, 1.0]
   },
   "worlds": [{
+    "sound": {
+      "src": "assets/sounds/BGClip.mp3",
+      "play": true
+    },
     "resources": [
       "assets/sounds/FirstLevel_cue.wav"
     ],
@@ -50,6 +50,10 @@
     ]
   }, 
   {
+    "sound": {
+      "src": "assets/sounds/BGClip.mp3",
+      "play": true
+    },
     "resources": [
       "assets/sounds/BlueLevel_cue.wav"
     ],

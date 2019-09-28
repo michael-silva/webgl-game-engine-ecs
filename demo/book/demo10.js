@@ -4,7 +4,7 @@ import {
   WorldCoordinateComponent,
   CameraEntity, ViewportComponent,
 } from '@wge/core/camera';
-import { KeyboardKeys, MouseButton } from '@wge/core/input-system';
+import { KeyboardKeys, MouseButton } from '@wge/core/input-engine';
 import { GameObject } from '@wge/core';
 import {
   CollisionUtils, PhysicsSystem, RigidRectangleComponent, RigidCircleComponent,
@@ -171,11 +171,10 @@ class Particle extends GameObject {
 }
 
 class MouseObjectsCreationSystem {
-  run(world, { inputState, scenes, currentScene }) {
+  run(world, { inputState, cameras }) {
     const { mouse, keyboard } = inputState;
     if (mouse.pressedButtons[MouseButton.Left]) {
-      const { cameras } = scenes[currentScene];
-      const camera = cameras[0];
+      const camera = cameras.find((c) => !c.disabled);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const viewport = camera.components.find((c) => c instanceof ViewportComponent);
       if (!viewport || !worldCoordinate) return;
@@ -252,11 +251,10 @@ class LifespanSystem {
 }
 
 class MouseMoveRigidShapesSystem {
-  run({ entities }, { inputState, scenes, currentScene }) {
+  run({ entities }, { inputState, cameras }) {
     const { mouse, keyboard } = inputState;
     if (keyboard.pressedKeys[KeyboardKeys.X]) {
-      const { cameras } = scenes[currentScene];
-      const camera = cameras[0];
+      const camera = cameras.find((c) => !c.disabled);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const viewport = camera.components.find((c) => c instanceof ViewportComponent);
       if (!viewport || !worldCoordinate) return;
@@ -392,6 +390,7 @@ class PointTargetSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   scene.setGlobalLight({ ambientColor: [0.8, 0.8, 0.8, 1] });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
@@ -401,7 +400,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 1280, 720],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   scene.setResources([
     './assets/images/bg.png',
@@ -420,13 +419,13 @@ export default (game) => {
   for (i = 0; i < 4; i++) {
     rx = 20 + Math.random() * 160;
     obj = new MinionMap({ position: [rx, ry], size: [18, 14.4], isRigid: true });
-    scene.addEntity(obj);
+    world.addEntity(obj);
 
     for (j = 0; j < 2; j++) {
       rx = 20 + (j * dx) + Math.random() * dx;
       dy = 10 * Math.random() - 5;
       obj = new Platform({ position: [rx, ry + dy] });
-      scene.addEntity(obj);
+      world.addEntity(obj);
     }
 
     ry = ry + 20 + Math.random() * 10;
@@ -436,9 +435,9 @@ export default (game) => {
   rx = -15;
   for (i = 0; i < 9; i++) {
     obj = new Platform({ position: [rx, 2] });
-    scene.addEntity(obj);
+    world.addEntity(obj);
     obj = new Platform({ position: [rx, 112] });
-    scene.addEntity(obj);
+    world.addEntity(obj);
     rx += 30;
   }
 
@@ -446,10 +445,10 @@ export default (game) => {
   ry = 12;
   for (i = 0; i < 8; i++) {
     obj = new Wall({ position: [5, ry] });
-    scene.addEntity(obj);
+    world.addEntity(obj);
 
     obj = new Wall({ position: [195, ry] });
-    scene.addEntity(obj);
+    world.addEntity(obj);
     ry += 16;
   }
 
@@ -471,7 +470,7 @@ export default (game) => {
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const message = new GameObject();
   message.components.push(
@@ -483,7 +482,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(message);
+  world.addEntity(message);
 
   scene.use(new LifespanSystem());
   scene.use(new KeyboardPhysicsMovementSystem());
