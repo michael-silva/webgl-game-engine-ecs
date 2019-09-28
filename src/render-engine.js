@@ -875,7 +875,7 @@ export class BackgroundRenderSystem {
 
     const shadowReceiver = entity.components.find((c) => c instanceof ShadowReceiverComponent);
     if (shadowReceiver && this.casters.length > 0) {
-      this._renderReceiverShadow(game, camera, shadowReceiver,
+      this._renderReceiverShadow(game, camera, scene, shadowReceiver,
         transform, renderable, this.casters);
     }
   }
@@ -1037,6 +1037,7 @@ export class RenderEngine {
 
   run(game) {
     game.cameras.forEach((camera) => {
+      if (camera.disabled) return;
       this._setupViewProjection(this.state.gl, camera);
       game.scenes.forEach((scene) => {
         if (!scene.active) return;

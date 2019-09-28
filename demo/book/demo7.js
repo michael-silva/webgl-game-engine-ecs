@@ -18,7 +18,7 @@ import {
   MovementComponent, RotationKeysComponent, MovementKeysComponent,
   Interpolation, InterpolationArray, WorldCoordinateInterpolation,
   ClampAtBoundaryComponent, CameraPanComponent, CameraBoundarySystem,
-  CameraPanSystem, InterpolationSystem,
+  CameraPanSystem, InterpolationSystem, MultipleCameraComponent,
 } from './shared';
 
 class TargetComponent {
@@ -135,8 +135,7 @@ class CameraFocusComponent {
 }
 
 class CameraControlSystem {
-  run({ entities }, { inputState, scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { inputState, cameras }) {
     const { keyboard } = inputState;
     cameras.forEach((camera) => {
       const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
@@ -200,8 +199,7 @@ class FocusAtComponent {
 }
 
 class CameraFollowSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { cameras }) {
     cameras.forEach((camera) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const focusAt = camera.components.find((c) => c instanceof FocusAtComponent);
@@ -247,8 +245,7 @@ class CameraShakeSystem {
     this._utils = new ShakeUtils();
   }
 
-  run(world, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run(world, { cameras }) {
     cameras.forEach((camera) => {
       const shake = camera.components.find((c) => c instanceof CameraShakeComponent);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -288,9 +285,8 @@ class MoveOnMouseComponent {
 }
 
 class MouseMoveEntitySystem {
-  run({ entities }, { scenes, currentScene, inputState }) {
+  run({ entities }, { cameras, inputState }) {
     const { mouse } = inputState;
-    const { cameras } = scenes[currentScene];
     cameras.forEach((camera) => {
       const moveOn = camera.components.find((c) => c instanceof MoveOnMouseComponent);
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
@@ -316,6 +312,8 @@ class MouseMoveEntitySystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
+  world.addComponent(new MultipleCameraComponent({ count: 3 }));
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 37.5],
@@ -341,7 +339,7 @@ export default (game) => {
     zoomTowardOutKey: KeyboardKeys.K,
     shakeKey: KeyboardKeys.Space,
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
   const camHero = new CameraEntity();
   camHero.components.push(new WorldCoordinateComponent({
     center: [50, 30],
@@ -351,7 +349,7 @@ export default (game) => {
     array: [490, 330, 150, 150],
     bound: 2,
   }));
-  scene.addCamera(camHero);
+  game.addCamera(camHero);
   const camBrain = new CameraEntity();
   camBrain.components.push(new WorldCoordinateComponent({
     center: [50, 30],
@@ -361,7 +359,7 @@ export default (game) => {
     array: [0, 330, 150, 150],
     bound: 2,
   }));
-  scene.addCamera(camBrain);
+  game.addCamera(camBrain);
 
   scene.setResources([
     './assets/images/bg.png',
@@ -381,12 +379,12 @@ export default (game) => {
     // position: [0, 0],
     },
   });
-  scene.addEntity(background);
+  world.addEntity(background);
 
   const minionLeft = new Minion(30, 30);
-  scene.addEntity(minionLeft);
+  world.addEntity(minionLeft);
   const minionRight = new Minion(70, 30);
-  scene.addEntity(minionRight);
+  world.addEntity(minionRight);
 
   const portal = new Portal(50, 30);
   portal.components.push(new MovementKeysComponent({
@@ -396,7 +394,7 @@ export default (game) => {
     down: KeyboardKeys.Down,
   }));
   portal.components.push(new ClampAtBoundaryComponent({ camIndex: 0, zone: 0.8 }));
-  scene.addEntity(portal);
+  world.addEntity(portal);
 
   const hero = new Hero();
   hero.components.push(new CameraPanComponent({ camIndex: 0, zone: 0.9 }));
@@ -404,12 +402,12 @@ export default (game) => {
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const brain = new Brain({ speed: 0.1 });
   brain.components.push(new ClampAtBoundaryComponent({ camIndex: 0, zone: 0.9 }));
   brain.components.push(new TargetComponent({ id: hero.id }));
-  scene.addEntity(brain);
+  world.addEntity(brain);
 
   const message = new GameObject();
   message.components.push(
@@ -421,7 +419,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(message);
+  world.addEntity(message);
 
   camera.components.push(new FocusAtKeysComponent({
     options: [{

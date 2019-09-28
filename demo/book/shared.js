@@ -7,6 +7,12 @@ import {
 import { WorldCoordinateComponent, ViewportComponent } from '@wge/core/camera';
 import { RenderComponent } from '@wge/core/render-engine';
 
+export class MultipleCameraComponent {
+  constructor({ count }) {
+    this.count = count;
+  }
+}
+
 export class MovementComponent {
   constructor({ speed, direction }) {
     this.speed = speed;
@@ -57,8 +63,8 @@ export class KeyboardMovementSystem {
 }
 
 export class MovementChangeLevelSystem {
-  run({ entities, scene }) {
-    const { cameras, worlds } = scene;
+  run({ entities, scene }, { cameras }) {
+    const { worlds } = scene;
     const [camera] = cameras;
     const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
     const MAX_X = worldCoordinate.center[0] + worldCoordinate.width / 2;
@@ -262,8 +268,7 @@ export class ClampAtBoundaryComponent {
 }
 
 export class CameraBoundarySystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { cameras }) {
     cameras.forEach((camera, i) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const viewport = camera.components.find((c) => c instanceof ViewportComponent);
@@ -315,8 +320,7 @@ export class WorldCoordinateInterpolation {
 }
 
 export class CameraPanSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { cameras }) {
     cameras.forEach((camera, i) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const wcInterpolation = camera.components
@@ -357,8 +361,7 @@ export class CameraPanSystem {
 }
 
 export class InterpolationSystem {
-  run(world, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run(world, { cameras }) {
     cameras.forEach((camera) => {
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       const wcInterpolation = camera.components

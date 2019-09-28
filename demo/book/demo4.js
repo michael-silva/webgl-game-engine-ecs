@@ -151,8 +151,8 @@ class UpdateSpritePositionSystem {
   }
 }
 
-const parseWorld2 = (scene) => {
-  scene.setResources([
+const parseWorld2 = (world) => {
+  world.setResources([
     './assets/fonts/system-default-font.fnt',
   ]);
 
@@ -165,11 +165,11 @@ const parseWorld2 = (scene) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(message);
+  world.addEntity(message);
 };
 
-const parseWorld1 = (scene) => {
-  scene.setResources([
+const parseWorld1 = (world) => {
+  world.setResources([
     './assets/images/minion_sprite.png',
     './assets/images/Consolas-72.png',
     './assets/fonts/system-default-font.fnt',
@@ -192,7 +192,7 @@ const parseWorld1 = (scene) => {
   );
 
   messageSys.components.push(new TextTrackComponent({ component: TransformTrackedComponent }));
-  scene.addEntity(messageSys);
+  world.addEntity(messageSys);
   const message16 = new GameObject();
   message16.components.push(
     new TextComponent({
@@ -206,7 +206,7 @@ const parseWorld1 = (scene) => {
     increase: KeyboardKeys.Up,
     decrease: KeyboardKeys.Down,
   }));
-  scene.addEntity(message16);
+  world.addEntity(message16);
   const message24 = new GameObject();
   message24.components.push(
     new TextComponent({
@@ -216,7 +216,7 @@ const parseWorld1 = (scene) => {
       font: './assets/fonts/Consolas-24.fnt',
     }),
   );
-  scene.addEntity(message24);
+  world.addEntity(message24);
   const message32 = new GameObject();
   message32.components.push(
     new TextComponent({
@@ -234,7 +234,7 @@ const parseWorld1 = (scene) => {
     up: KeyboardKeys.W,
     down: KeyboardKeys.S,
   }));
-  scene.addEntity(message32);
+  world.addEntity(message32);
   const message72 = new GameObject();
   message72.components.push(
     new TextComponent({
@@ -245,7 +245,7 @@ const parseWorld1 = (scene) => {
       font: './assets/fonts/Consolas-72.fnt',
     }),
   );
-  scene.addEntity(message72);
+  world.addEntity(message72);
   const message96 = new GameObject();
   message96.components.push(
     new TextComponent({
@@ -257,7 +257,7 @@ const parseWorld1 = (scene) => {
     }),
   );
   message96.components.push(new ColorUpdateComponent({ color: [0.003, 0.001, 0, 0] }));
-  scene.addEntity(message96);
+  world.addEntity(message96);
 
   const fontSheet = new Rectangle({
     color: [1, 1, 1, 0],
@@ -276,7 +276,7 @@ const parseWorld1 = (scene) => {
     minX: 45,
     minY: 45,
   }));
-  scene.addEntity(fontSheet);
+  world.addEntity(fontSheet);
 
   const hero = new Rectangle({
     color: Color.Transparent,
@@ -293,7 +293,7 @@ const parseWorld1 = (scene) => {
     right: KeyboardKeys.Right,
     left: KeyboardKeys.Left,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const leftMinion = new Rectangle({
     color: [1, 1, 1, 0],
@@ -315,7 +315,7 @@ const parseWorld1 = (scene) => {
       size: [24, 19.2],
     }),
   });
-  scene.addEntity(leftMinion);
+  world.addEntity(leftMinion);
 };
 
 export default (game) => {
@@ -328,9 +328,10 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 600, 400],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
-  parseWorld1(scene);
+  const world1 = scene.createWorld();
+  parseWorld1(world1);
   const world2 = scene.createWorld();
   parseWorld2(world2);
 

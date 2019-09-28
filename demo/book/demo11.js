@@ -14,7 +14,7 @@ import {
   RotationKeysComponent, KeyboardMovementSystem,
   KeyboardRotationSystem, MovementSystem, CameraPanComponent,
   CameraPanSystem, CameraBoundarySystem, InterpolationSystem,
-  WorldCoordinateInterpolation, Interpolation, InterpolationArray,
+  WorldCoordinateInterpolation, Interpolation, InterpolationArray, MultipleCameraComponent,
 } from './shared';
 import {
   Rectangle, MinionMap, HeroMap, Hero, Background,
@@ -39,7 +39,7 @@ export class ParallaxMovementComponent {
 }
 
 export class ParallaxMovementSystem {
-  run({ entities }, { scenes, currentScene }) {
+  run({ entities }, { cameras }) {
     entities.forEach((e) => {
       const transform = e.components.find((c) => c instanceof TransformComponent);
       const movement = e.components.find((c) => c instanceof ParallaxMovementComponent);
@@ -47,7 +47,6 @@ export class ParallaxMovementSystem {
       const [x, y] = transform.position;
       const [dx, dy] = movement.direction;
 
-      const { cameras } = scenes[currentScene];
       const camera = cameras[movement.camIndex];
       const worldCoordinate = camera.components.find((c) => c instanceof WorldCoordinateComponent);
       this._refPosUpdate(transform, movement, worldCoordinate);
@@ -80,8 +79,9 @@ export class ParallaxMovementSystem {
 
 export default (game) => {
   const scene = game.createScene();
-  const world = scene.getWorld();
+  const world = scene.createWorld();
   world.defaultLayer = LevelLayers.Actors;
+  world.addComponent(new MultipleCameraComponent({ count: 2 }));
   scene.setGlobalLight({ ambientColor: [0.3, 0.3, 0.3, 1] });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
@@ -95,7 +95,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 1280, 720],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   const heroCamera = new CameraEntity();
   heroCamera.components.push(new WorldCoordinateComponent({
@@ -106,7 +106,7 @@ export default (game) => {
     array: [0, 420, 300, 300],
     bound: 2,
   }));
-  scene.addCamera(heroCamera);
+  game.addCamera(heroCamera);
 
   scene.setResources([
     './assets/images/bg.png',
@@ -252,7 +252,7 @@ export default (game) => {
       position: [30, 50],
     }),
   });
-  scene.addEntity(block1);
+  world.addEntity(block1);
 
   const block2 = new Rectangle({
     color: [0, 1, 0, 1],
@@ -261,18 +261,18 @@ export default (game) => {
       position: [70, 50],
     }),
   });
-  scene.addEntity(block2);
+  world.addEntity(block2);
 
   const minionLeft = new MinionMap({ size: [9, 7.2], position: [25, 40], z: 2 });
   minionLeft.components.push(new ShadowReceiverComponent());
   minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionLeft);
+  world.addEntity(minionLeft);
   const minionRight = new MinionMap({
     size: [9, 7.2], position: [65, 25], z: 2, noMap: true,
   });
   minionRight.components.push(new ShadowReceiverComponent());
   minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionRight);
+  world.addEntity(minionRight);
 
   const hero = new HeroMap({ position: [40, 30], size: [9, 12], z: 5 });
   hero.components.push(new CameraPanComponent({ camIndex: 0, zone: 0.9 }));
@@ -282,7 +282,7 @@ export default (game) => {
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const hero2 = new Hero({
     position: [60, 40],
@@ -296,7 +296,7 @@ export default (game) => {
     },
   });
   hero2.components.push(new ShadowCasterComponent());
-  scene.addEntity(hero2);
+  world.addEntity(hero2);
 
   const message = new GameObject();
   message.components.push(
@@ -308,7 +308,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(message);
+  world.addEntity(message);
 
   scene.use(new InterpolationSystem());
   scene.use(new KeyboardMovementSystem());

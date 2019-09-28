@@ -5,27 +5,30 @@ import {
   ViewportComponent,
 } from './camera';
 
-export class SceneParser {
+export class WorldParser {
   _maps = []
 
+  constructor(game) {
+    this._game = game;
+  }
+
   parse(scene, {
-    sound, resources, camera, worlds,
+    resources, camera, worlds,
   }) {
     const camEntity = this.parseCamera(camera);
-    scene.addCamera(camEntity);
+    this._game.addCamera(camEntity);
     scene.setResources(resources);
-    if (sound) {
-      const { src, play } = sound;
-      scene.setSound(new SoundComponent({ src, play }));
-    }
     let currentWorld = null;
-    worlds.forEach((world, i) => {
-      currentWorld = (i === 0) ? scene.getWorld() : scene.createWorld();
+    worlds.forEach((world) => {
+      currentWorld = scene.createWorld();
       currentWorld.setResources(world.resources);
+      if (world.sound) {
+        const { src, play } = world.sound;
+        currentWorld.setSound(new SoundComponent({ src, play }));
+      }
       world.objects.forEach((object) => {
         const entity = this.parseObject(object);
-        if (currentWorld) currentWorld.addEntity(entity);
-        else scene.addEntity(entity);
+        currentWorld.addEntity(entity);
       });
     });
   }

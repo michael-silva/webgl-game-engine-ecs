@@ -18,26 +18,25 @@ import {
 } from './objects';
 
 class GlobalLightControlSystem {
-  run(world, { inputState, scenes, currentScene }) {
+  run({ scene }, { inputState }) {
     const { keyboard } = inputState;
-    const scene = scenes[currentScene];
     const { globalLight } = scene;
     const delta = 0.05;
     if (keyboard.clickedKeys[KeyboardKeys.Up]) {
       const intensity = globalLight.ambientIntensity + delta;
-      scene.globalLight.ambientIntensity = intensity > 1 ? 0 : intensity;
+      globalLight.ambientIntensity = intensity > 1 ? 0 : intensity;
     }
     if (keyboard.clickedKeys[KeyboardKeys.Down]) {
       const intensity = globalLight.ambientIntensity - delta;
-      scene.globalLight.ambientIntensity = intensity < 0 ? 1 : intensity;
+      globalLight.ambientIntensity = intensity < 0 ? 1 : intensity;
     }
     if (keyboard.clickedKeys[KeyboardKeys.Right]) {
       const red = globalLight.ambientColor[0] + delta;
-      scene.globalLight.ambientColor[0] = red > 1 ? 0 : red;
+      globalLight.ambientColor[0] = red > 1 ? 0 : red;
     }
     if (keyboard.clickedKeys[KeyboardKeys.Left]) {
       const red = globalLight.ambientColor[0] - delta;
-      scene.globalLight.ambientColor[0] = red < 0 ? 1 : red;
+      globalLight.ambientColor[0] = red < 0 ? 1 : red;
     }
   }
 }
@@ -148,6 +147,7 @@ class MaterialControlSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   scene.setGlobalLight({ ambientColor: [0.3, 0.3, 0.3, 1] });
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
@@ -161,7 +161,7 @@ export default (game) => {
     shininess: 100,
     specular: [1, 0, 0, 1],
   });
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   scene.setResources([
     './assets/images/bg.png',
@@ -187,7 +187,7 @@ export default (game) => {
     shadowReceiver: true,
   });
   bg.components.push(new ToogleMaterialComponent({ key: KeyboardKeys.Space, material }));
-  scene.addEntity(bg);
+  world.addEntity(bg);
 
   // the light
   const light1 = new Light({
@@ -250,7 +250,7 @@ export default (game) => {
       position: [30, 50],
     }),
   });
-  scene.addEntity(block1);
+  world.addEntity(block1);
 
   const block2 = new Rectangle({
     color: [0, 1, 0, 1],
@@ -259,16 +259,16 @@ export default (game) => {
       position: [70, 50],
     }),
   });
-  scene.addEntity(block2);
+  world.addEntity(block2);
 
   const minionLeft = new MinionMap({ size: [38, 34.4], position: [25, 30], z: 2 });
   minionLeft.components.push(new ShadowReceiverComponent());
   minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionLeft);
+  world.addEntity(minionLeft);
   const minionRight = new MinionMap({ position: [65, 25], z: 2, noMap: true });
   minionRight.components.push(new ShadowReceiverComponent());
   minionLeft.components.push(new ShadowCasterComponent());
-  scene.addEntity(minionRight);
+  world.addEntity(minionRight);
 
   const hero = new HeroMap({ position: [20, 30], z: 5 });
   hero.components.push(new ShadowReceiverComponent());
@@ -288,7 +288,7 @@ export default (game) => {
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const hero2 = new Hero({
     position: [60, 50],
@@ -302,7 +302,7 @@ export default (game) => {
     },
   });
   hero2.components.push(new ShadowCasterComponent());
-  scene.addEntity(hero2);
+  world.addEntity(hero2);
 
   const message = new GameObject();
   message.components.push(new TrackEntityMaterialComponent({ entityId: hero.id }));
@@ -315,7 +315,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(message);
+  world.addEntity(message);
 
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());

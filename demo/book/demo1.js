@@ -102,6 +102,7 @@ class PulseSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [20, 60],
@@ -110,7 +111,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [20, 40, 600, 300],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   const blueTransform = new TransformComponent({
     position: [20, 60],
@@ -128,36 +129,36 @@ export default (game) => {
     increase: KeyboardKeys.Up,
     decrease: KeyboardKeys.Down,
   }));
-  scene.addEntity(blueRect);
+  world.addEntity(blueRect);
   const redTransform = new TransformComponent({
     position: [20, 60],
     size: [2, 2],
   });
   const redRect = new Rectangle({ color: Color.Red, transform: redTransform });
   redRect.components.push(new PulseComponent({ rate: 0.01, minSize: [2, 2], maxSize: [5, 5] }));
-  scene.addEntity(redRect);
+  world.addEntity(redRect);
 
 
   const topRight = new Rectangle({
     color: Color.Green,
     transform: new TransformComponent({ position: [30, 65], size: [1, 1] }),
   });
-  scene.addEntity(topRight);
+  world.addEntity(topRight);
   const topLeft = new Rectangle({
     color: Color.Green,
     transform: new TransformComponent({ position: [10, 65], size: [1, 1] }),
   });
-  scene.addEntity(topLeft);
+  world.addEntity(topLeft);
   const bottomRight = new Rectangle({
     color: Color.Green,
     transform: new TransformComponent({ position: [30, 55], size: [1, 1] }),
   });
-  scene.addEntity(bottomRight);
+  world.addEntity(bottomRight);
   const bottomLeft = new Rectangle({
     color: Color.Green,
     transform: new TransformComponent({ position: [10, 55], size: [1, 1] }),
   });
-  scene.addEntity(bottomLeft);
+  world.addEntity(bottomLeft);
 
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());

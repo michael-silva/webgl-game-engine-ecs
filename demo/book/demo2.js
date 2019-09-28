@@ -1,6 +1,6 @@
 import { RenderComponent } from '@wge/core/render-engine';
-import { AudioComponent, AudioSystem } from '@wge/core/audio-system';
-import { SceneParser } from '@wge/core/scene-parser';
+import { AudioComponent, AudioSystem, SoundSystem } from '@wge/core/audio-system';
+import { WorldParser } from '@wge/core/world-parser';
 import { TransformComponent } from '@wge/core/utils';
 import {
   MovementComponent, MovementKeysComponent, KeyboardMovementSystem,
@@ -8,18 +8,19 @@ import {
 } from './shared';
 
 export default (game, data) => {
-  const parser = new SceneParser();
+  const parser = new WorldParser(game);
   parser.map('transform', TransformComponent);
   parser.map('movement', MovementComponent);
   parser.map('movementKeys', MovementKeysComponent);
   parser.map('render', RenderComponent);
   parser.map('audio', AudioComponent);
 
-  const scene2 = game.createScene();
-  parser.parse(scene2, data);
-  scene2.use(new KeyboardMovementSystem());
-  scene2.use(new MovementSystem());
-  scene2.use(new MovementChangeLevelSystem());
-  scene2.use(new MovementAudioSystem());
-  scene2.use(new AudioSystem());
+  const scene = game.createScene();
+  parser.parse(scene, data);
+  scene.use(new KeyboardMovementSystem());
+  scene.use(new MovementSystem());
+  scene.use(new MovementChangeLevelSystem());
+  scene.use(new MovementAudioSystem());
+  scene.use(new AudioSystem());
+  scene.use(new SoundSystem());
 };

@@ -89,6 +89,7 @@ class UpdateSpritePositionSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [20, 60],
@@ -97,7 +98,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [20, 40, 600, 300],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   scene.setResources([
     './assets/images/minion_sprite.png',
@@ -113,7 +114,7 @@ export default (game) => {
       size: [3, 3],
     }),
   });
-  scene.addEntity(portal);
+  world.addEntity(portal);
   const collector = new Rectangle({
     color: [1, 0, 0, 0],
     texture: './assets/images/minion_sprite.png',
@@ -124,7 +125,7 @@ export default (game) => {
     }),
   });
   collector.components.push(new ColorUpdateComponent({ color: [0, 0, 0, 0.02] }));
-  scene.addEntity(collector);
+  world.addEntity(collector);
 
   const fontSheet = new Rectangle({
     color: [1, 1, 1, 0],
@@ -143,7 +144,7 @@ export default (game) => {
     minX: 45,
     minY: 45,
   }));
-  scene.addEntity(fontSheet);
+  world.addEntity(fontSheet);
 
   const hero = new Rectangle({
     color: Color.Transparent,
@@ -159,7 +160,7 @@ export default (game) => {
     right: KeyboardKeys.Right,
     left: KeyboardKeys.Left,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
 
   const rightMinion = new Rectangle({
@@ -181,7 +182,7 @@ export default (game) => {
       size: [4, 3.2],
     }),
   });
-  scene.addEntity(rightMinion);
+  world.addEntity(rightMinion);
   const leftMinion = new Rectangle({
     color: [1, 1, 1, 0],
     texture: './assets/images/minion_sprite.png',
@@ -202,7 +203,7 @@ export default (game) => {
       size: [4, 3.2],
     }),
   });
-  scene.addEntity(leftMinion);
+  world.addEntity(leftMinion);
   scene.use(new KeyboardMovementSystem());
   scene.use(new MovementSystem());
   scene.use(new UpdatingColorSystem());

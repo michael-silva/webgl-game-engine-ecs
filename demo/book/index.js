@@ -1,8 +1,5 @@
-/* eslint-disable max-classes-per-file */
-
 import { GameEngine } from '@wge/core';
 import { KeyboardKeys } from '@wge/core/input-engine';
-import { SoundSystem } from '@wge/core/audio-system';
 import { ImageLoader, AudioLoader } from '@wge/core/resources-system';
 import { FontLoader } from '@wge/core/systems';
 import initDemo1 from './demo1';
@@ -16,13 +13,26 @@ import initDemo8 from './demo8';
 import initDemo9 from './demo9';
 import initDemo10 from './demo10';
 import initDemo11 from './demo11';
+import { MultipleCameraComponent } from './shared';
 
 export class KeyboardChangeDemoSystem {
-  constructor(canvas) {
+  constructor(canvas, sceneIndex = 0) {
     this.canvas = canvas;
+    this._initialScene = sceneIndex;
   }
 
   run(game) {
+    if (!this._camIndex) {
+      this._camIndex = [];
+      let index = 0;
+      game.scenes.forEach((scene, i) => {
+        const multiple = scene.worlds[0]
+          .components.find((c) => c instanceof MultipleCameraComponent);
+        index += multiple ? multiple.count : 1;
+        this._camIndex[i] = index;
+      });
+      this.changeScene(game, this._initialScene);
+    }
     const { inputState: { keyboard } } = game;
     if (keyboard.pressedKeys[KeyboardKeys.Shift]) {
       if (keyboard.pressedKeys[KeyboardKeys.One]) {
@@ -79,12 +89,17 @@ export class KeyboardChangeDemoSystem {
   }
 
   changeScene(game, number) {
-    game.scenes.forEach((scene) => {
-      // eslint-disable-next-line no-param-reassign
-      scene.active = false;
+    /* eslint-disable no-param-reassign */
+    game.cameras.forEach((camera) => {
+      camera.disabled = true;
     });
-    // eslint-disable-next-line no-param-reassign
-    game.scenes[number].active = true;
+    game.scenes.forEach((scene, i) => {
+      scene.active = i === number;
+    });
+    for (let i = this._camIndex[number - 1] || 0; i < this._camIndex[number]; i++) {
+      game.cameras[i].disabled = false;
+    }
+    /* eslint-enable no-param-reassign */
     this.canvas.width = number > 7 ? 1280 : 640;
     this.canvas.height = number > 7 ? 720 : 480;
   }

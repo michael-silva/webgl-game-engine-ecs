@@ -141,7 +141,7 @@ class GameWorld {
   }
 
   setSound(sound) {
-    this._scene.sound = sound;
+    this._world.sound = sound;
   }
 }
 

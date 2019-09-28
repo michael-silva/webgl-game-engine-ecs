@@ -137,8 +137,7 @@ class BrainModeSystem {
 }
 
 class TextTrackBrainModeSystem {
-  run({ entities }, { scenes, currentScene }) {
-    const { cameras } = scenes[currentScene];
+  run({ entities }, { cameras }) {
     entities.forEach((e) => {
       const text = e.components.find((c) => c instanceof TextComponent);
       const brainMode = e.components.find((c) => c instanceof BrainModeComponent);
@@ -149,9 +148,10 @@ class TextTrackBrainModeSystem {
       const targetTransform = target.components.find((c) => c instanceof TransformComponent);
       if (!targetTransform) return;
       // Check for hero going outside 80% of the WC Window bound
-      const worldCoordinate = cameras[0].componens
+      const camera = cameras.find((c) => !c.disabled);
+      const worldCoordinate = camera.componens
         .find((c) => c instanceof WorldCoordinateComponent);
-      const viewport = cameras[0].componens
+      const viewport = camera.componens
         .find((c) => c instanceof ViewportComponent);
       const camTransform = CameraUtils.getWcTransform(worldCoordinate, viewport);
       const cameraArea = TransformUtils.resize(camTransform, 0.8);
@@ -163,6 +163,7 @@ class TextTrackBrainModeSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 33],
@@ -171,7 +172,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 600, 400],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   scene.setResources([
     './assets/images/minion_sprite.png',
@@ -187,10 +188,10 @@ export default (game) => {
 
   const hero = new Hero();
   hero.components.push(new BrainTargetComponent({ component: TransformComponent }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const dyePack = new DyePack();
-  scene.addEntity(dyePack);
+  world.addEntity(dyePack);
 
   const brain = new Brain();
   brain.components.push(new RotationKeysComponent({
@@ -206,7 +207,7 @@ export default (game) => {
       font: './assets/fonts/system-default-font.fnt',
     }),
   );
-  scene.addEntity(brain);
+  world.addEntity(brain);
 
   // create 5 minions at random Y values
   const maxMinions = 10;
@@ -218,7 +219,7 @@ export default (game) => {
     minion.components.push(new MovementLimitComponent({
       minX: 0, maxX: 100, minY: 0, maxY: 65,
     }));
-    scene.addEntity(minion);
+    world.addEntity(minion);
   }
 
   scene.use(new KeyboardMovementSystem());

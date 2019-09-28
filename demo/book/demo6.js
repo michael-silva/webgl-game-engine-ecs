@@ -195,6 +195,7 @@ class DyePackCollisionSystem {
 
 export default (game) => {
   const scene = game.createScene();
+  const world = scene.createWorld();
   const camera = new CameraEntity();
   camera.components.push(new WorldCoordinateComponent({
     center: [50, 33],
@@ -203,7 +204,7 @@ export default (game) => {
   camera.components.push(new ViewportComponent({
     array: [0, 0, 600, 400],
   }));
-  scene.addCamera(camera);
+  game.addCamera(camera);
 
   scene.setResources([
     './assets/images/minion_sprite.png',
@@ -220,7 +221,7 @@ export default (game) => {
       minX: 0, maxX: 200, minY: 0, maxY: 65,
     }));
     minion.components.push(new CollisionComponent({ color: [1, 0, 0, 0.5] }));
-    scene.addEntity(minion);
+    world.addEntity(minion);
   }
 
   const hero = new Hero();
@@ -229,16 +230,16 @@ export default (game) => {
     left: KeyboardKeys.Q,
     right: KeyboardKeys.E,
   }));
-  scene.addEntity(hero);
+  world.addEntity(hero);
 
   const brain = new Brain();
   brain.components.push(new CollisionComponent({ }));
   brain.components.push(new TargetComponent({ id: hero.id }));
-  scene.addEntity(brain);
+  world.addEntity(brain);
 
   const dyePack = new DyePack();
   dyePack.components.push(new DyePackTargetComponent({ id: brain.id }));
-  scene.addEntity(dyePack);
+  world.addEntity(dyePack);
 
   scene.use(new KeyboardMovementSystem());
   scene.use(new KeyboardRotationSystem());
