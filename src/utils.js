@@ -164,8 +164,9 @@ export class CameraUtils {
 
   static getWcTransform(worldCoordinate, viewportArray, zone = 1) {
     const position = worldCoordinate.center;
+    const z = Array.isArray(zone) ? zone : [zone, zone];
     const height = CameraUtils.getWcHeight(worldCoordinate, viewportArray);
-    const size = [worldCoordinate.width * zone, height * zone];
+    const size = [worldCoordinate.width * z[0], height * z[1]];
     return {
       position,
       size,

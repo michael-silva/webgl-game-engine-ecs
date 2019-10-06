@@ -233,12 +233,16 @@ class RenderUtils {
   }
 
   static getSpriteElement(animation) {
+    const cols = animation.numFrames / animation.rows;
+    const i = animation.currentSprite % cols;
+    const j = Math.floor(animation.currentSprite / (animation.rows + 1));
+    const top = animation.top - (j * (animation.height + animation.padding));
     const left = animation.firstSpriteLeft
-      + (animation.currentSprite * (animation.width + animation.padding));
+      + (i * (animation.width + animation.padding));
     return [left,
       left + animation.width,
-      animation.top - animation.height,
-      animation.top];
+      top,
+      top + animation.height];
   }
 
   static activateGlobalLight(gl, shader, ambientColor, ambientIntensity) {
@@ -468,6 +472,8 @@ export class SpriteAnimation {
   padding = 0.0;
 
   numFrames = 1;
+
+  rows = 1;
 
   // number of elements in an animation
   // per animation settings

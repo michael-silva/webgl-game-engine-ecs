@@ -1,7 +1,9 @@
 import { GameEngine } from '@wge/core';
 import { FontLoader } from '@wge/core/systems';
 import { AudioLoader, ImageLoader } from '@wge/core/resources-system';
-import initPong from './pong';
+// import initPong from './pong';
+import initRunner from './runner';
+
 
 function main() {
   const canvas = document.querySelector('#canvas');
@@ -10,7 +12,8 @@ function main() {
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
   game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });
-  initPong(game);
+  // initPong(game);
+  initRunner(game);
   game.run();
 }
 
