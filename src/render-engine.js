@@ -566,7 +566,9 @@ export class RigidShapeRenderSystem {
     const sy = line.firstVertex[1] - line.secondVertex[1];
     const cx = line.firstVertex[0] - sx / 2;
     const cy = line.firstVertex[1] - sy / 2;
-    const xform = TransformUtils.getXForm({ ...transform, position: [cx, cy], size: [sx, sy] });
+    const xform = TransformUtils.getXForm({
+      ...transform, rotationInRadians: 0, position: [cx, cy], size: [sx, sy],
+    });
     gl.uniformMatrix4fv(shader.modelTransform, false, xform);
     if (line.showLine) {
       gl.drawArrays(gl.LINE_STRIP, 0, 2);
