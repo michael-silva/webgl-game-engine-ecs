@@ -13,6 +13,7 @@ import initDemo8 from './demo8';
 import initDemo9 from './demo9';
 import initDemo10 from './demo10';
 import initDemo11 from './demo11';
+import initDemo12 from './demo12';
 import { MultipleCameraComponent } from './shared';
 
 export class KeyboardChangeDemoSystem {
@@ -112,7 +113,7 @@ function main() {
   game.mapLoader({ pattern: /(\.png|\.jpg)$/, loader: new ImageLoader() });
   game.mapLoader({ pattern: /(\.mp3|\.wav)$/, loader: new AudioLoader() });
   game.mapLoader({ pattern: /\.fnt$/, loader: new FontLoader() });
-  game.useBefore(new KeyboardChangeDemoSystem(canvas));
+  game.useBefore(new KeyboardChangeDemoSystem(canvas, 11));
   fetch('assets/scenes/demo1/scene.json')
     .then((res) => res.json())
     .then((data) => {
@@ -127,6 +128,7 @@ function main() {
       initDemo9(game);
       initDemo10(game);
       initDemo11(game);
+      initDemo12(game);
 
       game.run();
     });
